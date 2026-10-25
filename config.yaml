@@ -1,0 +1,51 @@
+# Configuración de ShortsAuto. Todo se ejecuta en local.
+
+video:
+  ancho: 1080
+  alto: 1920
+  fps: 30
+  duracion_objetivo: 45        # segundos (30-60)
+  # Resolución interna del fondo procedural (se escala a 1080x1920 con lanczos)
+  escala_render: 3             # 1080/3 = 360x640
+
+voz:
+  motor: kokoro
+  voz: em_alex                 # ef_dora (mujer), em_alex, em_santa (hombre)
+  velocidad: 1.1
+  pausa_entre_frases: 0.14     # segundos
+
+subtitulos:
+  estilo: karaoke              # karaoke | simple
+  palabras_por_grupo: 3
+  fuente: Anton
+  tamano: 150
+  color: "&H00FFFFFF"          # blanco (formato ASS: &HAABBGGRR)
+  color_activo: "&H0000E1FF"   # amarillo
+  borde: 7
+  posicion_y: 0.62             # fracción de la altura
+
+guion:
+  motor: llama                 # llama (LLM local)
+  puerto: 8765
+  contexto: 4096
+  temperatura: 0.8
+  idioma: español
+
+visuales:
+  modo: auto                   # auto | procedural | difusion
+  estilo: minimalista          # realista | anime | minimalista | 3d
+
+musica:
+  modo: auto                   # auto | procedural | ace-step
+  volumen: 0.22
+  ducking: true
+
+sfx:
+  activado: true
+  volumen: 0.5
+
+audio:
+  loudness_lufs: -14
+
+salida:
+  carpeta: output

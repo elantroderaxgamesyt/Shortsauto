@@ -1,0 +1,11 @@
+models/
+output/
+logs/
+bin/
+build/
+dist/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.part

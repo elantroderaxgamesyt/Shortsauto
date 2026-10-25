@@ -1,0 +1,14 @@
+{
+  "titulo": "Venus: el planeta donde un día dura más que un año",
+  "gancho": "¿Sabías que en Venus un día dura más que un año?",
+  "escenas": [
+    {"texto": "Venus tarda doscientos cuarenta y tres días terrestres en girar sobre sí mismo.", "visual": "planet Venus glowing in space", "palabra_clave": "Venus", "sfx": "whoosh"},
+    {"texto": "Pero solo necesita doscientos veinticinco días para dar una vuelta completa al Sol.", "visual": "Venus orbiting the sun", "palabra_clave": "Sol", "sfx": "whoosh"},
+    {"texto": "Y además gira al revés: allí el Sol sale por el oeste y se pone por el este.", "visual": "sunrise on a volcanic planet", "palabra_clave": "revés", "sfx": "impacto"},
+    {"texto": "Su superficie supera los cuatrocientos sesenta grados, suficiente para derretir el plomo.", "visual": "molten lava landscape under thick clouds", "palabra_clave": "plomo", "sfx": "whoosh"}
+  ],
+  "cta": "Síguenos para más datos del espacio.",
+  "mood": "misterio",
+  "descripcion": "Venus es el planeta más raro del sistema solar. ¿Lo sabías?",
+  "hashtags": ["#espacio", "#venus", "#ciencia", "#datoscuriosos", "#astronomia"]
+}

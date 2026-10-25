@@ -1,0 +1,33 @@
+name: Instalador Windows
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar Inno Setup
+        run: choco install innosetup -y --no-progress
+      - name: Construir
+        shell: pwsh
+        env:
+          SHORTSAUTO_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.1.0' }}
+        run: ./packaging/build_windows.ps1
+      - name: Prueba rápida (sin modelos)
+        shell: pwsh
+        run: |
+          dist/ShortsAuto/python/python.exe -c "import sys; sys.path.insert(0, 'dist/ShortsAuto/src'); import shortsauto.pipeline, kokoro_onnx, PySide6.QtWidgets; print('ok')"
+          dist/ShortsAuto/bin/ffmpeg.exe -hide_banner -filters | Select-String " ass "
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ShortsAuto-Setup
+          path: dist/ShortsAuto-Setup-*.exe
+      - name: Publicar en Releases
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ShortsAuto-Setup-*.exe
