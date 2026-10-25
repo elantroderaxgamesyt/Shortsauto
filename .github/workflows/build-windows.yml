@@ -2,7 +2,8 @@ name: Instalador Windows
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths-ignore: ["**.md"]
   workflow_dispatch:
 
 permissions:
@@ -11,14 +12,14 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      SHORTSAUTO_VERSION: 0.1.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
       - name: Instalar Inno Setup
         run: choco install innosetup -y --no-progress
       - name: Construir
         shell: pwsh
-        env:
-          SHORTSAUTO_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.1.0' }}
         run: ./packaging/build_windows.ps1
       - name: Prueba rápida (sin modelos)
         shell: pwsh
@@ -30,7 +31,10 @@ jobs:
           name: ShortsAuto-Setup
           path: dist/ShortsAuto-Setup-*.exe
       - name: Publicar en Releases
-        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.SHORTSAUTO_VERSION }}
+          name: ShortsAuto ${{ env.SHORTSAUTO_VERSION }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
           files: dist/ShortsAuto-Setup-*.exe
