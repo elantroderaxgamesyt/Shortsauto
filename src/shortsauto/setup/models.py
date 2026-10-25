@@ -144,13 +144,25 @@ def ensure_llama_server(cuda: bool, progress=None) -> Path:
     import tarfile
     import zipfile
 
+    # La release "latest" a veces es solo un marcador (nightly-tag.txt) sin binarios:
+    # recorremos las más recientes y usamos la primera que tenga el paquete.
     with urllib.request.urlopen(
-        "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest", timeout=30
+        "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=20", timeout=30
     ) as r:
-        release = json.load(r)
+        releases = json.load(r)
+    assets, errors = None, []
+    for release in releases:
+        try:
+            assets = _pick_asset(release["assets"], cuda)
+            log.info("llama.cpp %s: %s", release["tag_name"], [a["name"] for a in assets])
+            break
+        except RuntimeError as e:
+            errors.append(f"{release['tag_name']}: {e}")
+    if assets is None:
+        raise RuntimeError("No encontré llama.cpp para este sistema:\n" + "\n".join(errors[:3]))
     target = BIN / "llama"
     target.mkdir(parents=True, exist_ok=True)
-    for asset in _pick_asset(release["assets"], cuda):
+    for asset in assets:
         archive = BIN / asset["name"]
         download(asset["browser_download_url"], archive,
                  (lambda d, t, n=asset["name"]: progress(n, d, t)) if progress else None)

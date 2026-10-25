@@ -26,6 +26,7 @@ def tail(path: Path, n: int = 40) -> str:
 
 
 def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     from shortsauto.setup import installer
 
     hw, profile, steps = installer.plan()

@@ -27,6 +27,10 @@ def setup_logging() -> None:
 
 
 def main() -> int:
+    # En Windows, la salida redirigida usa cp1252 y fallaría con «→» o «✔».
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Generador de Shorts 100% local")
     ap.add_argument("--tema")
     ap.add_argument("--sorprendeme", action="store_true")
