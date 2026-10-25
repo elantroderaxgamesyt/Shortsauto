@@ -21,6 +21,7 @@ class Step:
     label: str
     size_gb: float
     done: bool
+    optional: bool = False      # si falla, la app sigue funcionando en modo ligero
 
 
 def plan(hw: hardware.Hardware | None = None) -> tuple[hardware.Hardware, dict, list[Step]]:
@@ -36,10 +37,10 @@ def plan(hw: hardware.Hardware | None = None) -> tuple[hardware.Hardware, dict, 
     if profile["image"] != "procedural":
         from ..visuals import diffusion
         steps.append(Step("torch", "PyTorch con CUDA", 2.8, importlib.util.find_spec("torch") is not None
-                          and importlib.util.find_spec("diffusers") is not None))
-        steps.append(Step(profile["image"], f"Generador de imágenes ({profile['image']})",
+                          and importlib.util.find_spec("diffusers") is not None, optional=True))
+        steps.append(Step(profile["image"], f"Imágenes con IA ({profile['image']})",
                           diffusion.SPECS[profile["image"]]["gb"],
-                          _diffusion_installed(profile["image"])))
+                          _diffusion_installed(profile["image"]), optional=True))
     return hw, profile, steps
 
 

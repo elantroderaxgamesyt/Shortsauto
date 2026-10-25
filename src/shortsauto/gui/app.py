@@ -10,7 +10,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Qt, QThread, QUrl, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QApplication, QComboBox, QDialog, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+    QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar,
     QPushButton, QSlider, QSpinBox, QTabWidget, QVBoxLayout, QWidget,
 )
@@ -93,21 +93,29 @@ class Worker(QObject):
 
 class SetupWorker(QObject):
     progress = Signal(str, float)
-    done = Signal(bool, str)
+    done = Signal(bool, str)      # ok, mensaje (error o aviso)
 
     def __init__(self, hw, steps):
         super().__init__()
         self.hw, self.steps = hw, steps
 
     def run(self) -> None:
-        try:
-            for step in self.steps:
-                if not step.done:
-                    installer.run_step(step, self.hw, self.progress.emit)
-            self.done.emit(True, "")
-        except Exception as e:
-            log.exception("Instalación")
-            self.done.emit(False, f"{type(e).__name__}: {e}\n\n(Más detalles en logs/shortsauto.log)")
+        warnings = []
+        for step in self.steps:
+            if step.done:
+                continue
+            try:
+                installer.run_step(step, self.hw, self.progress.emit)
+                step.done = True
+            except Exception as e:
+                log.exception("Instalación de %s", step.key)
+                detail = f"{step.label}: {type(e).__name__}: {e}"
+                if not step.optional:
+                    self.done.emit(False, detail + "\n\n(Más detalles en logs/shortsauto.log)")
+                    return
+                warnings.append(detail)
+                break   # las imágenes dependen de PyTorch: no seguimos con ellas
+        self.done.emit(True, "\n".join(warnings))
 
 
 def start_thread(owner, worker: QObject, finished_signal) -> QThread:
@@ -139,13 +147,20 @@ class SetupWizard(QDialog):
         info.setWordWrap(True)
         lay.addWidget(info)
         self.list = QListWidget()
-        pending = 0.0
         for s in self.steps:
             mark = "✔" if s.done else "⬇"
-            QListWidgetItem(f"{mark}  {s.label}  —  {s.size_gb:.1f} GB", self.list)
-            pending += 0 if s.done else s.size_gb
+            extra = "  (opcional)" if s.optional else ""
+            QListWidgetItem(f"{mark}  {s.label}  —  {s.size_gb:.1f} GB{extra}", self.list)
         lay.addWidget(self.list)
-        lay.addWidget(QLabel(f"Descarga total: <b>{pending:.1f} GB</b>"))
+        self.with_images = QCheckBox("Instalar también las imágenes con IA (opcional)")
+        self.with_images.setToolTip("Usa la GPU. Si falla, la app funciona igual con fondos animados.")
+        self.with_images.setChecked(True)
+        self.with_images.toggled.connect(self.update_total)
+        if any(s.optional and not s.done for s in self.steps):
+            lay.addWidget(self.with_images)
+        self.total = QLabel()
+        lay.addWidget(self.total)
+        self.update_total()
         self.status = QLabel("")
         self.status.setObjectName("muted")
         self.bar = QProgressBar()
@@ -156,9 +171,17 @@ class SetupWizard(QDialog):
         self.button.clicked.connect(self.start)
         lay.addWidget(self.button)
 
+    def selected_steps(self) -> list:
+        return [s for s in self.steps if not s.optional or self.with_images.isChecked()]
+
+    def update_total(self) -> None:
+        pending = sum(s.size_gb for s in self.selected_steps() if not s.done)
+        self.total.setText(f"Descarga total: <b>{pending:.1f} GB</b>")
+
     def start(self) -> None:
         self.button.setEnabled(False)
-        self.worker = SetupWorker(self.hw, self.steps)
+        self.with_images.setEnabled(False)
+        self.worker = SetupWorker(self.hw, self.selected_steps())
         self.worker.progress.connect(self.on_progress)
         self.worker.done.connect(self.on_done)
         self.thread = start_thread(self, self.worker, self.worker.done)
@@ -169,9 +192,15 @@ class SetupWizard(QDialog):
 
     def on_done(self, ok: bool, error: str) -> None:
         if ok:
+            if error:
+                QMessageBox.information(
+                    self, "Imágenes con IA no instaladas",
+                    "La app ya funciona (con fondos animados), pero no se pudieron instalar las "
+                    "imágenes con IA. Puedes reintentarlo desde Ajustes.\n\n" + error)
             self.accept()
             return
         self.button.setEnabled(True)
+        self.with_images.setEnabled(True)
         self.button.setText("Reintentar (continúa donde se quedó)")
         QMessageBox.warning(self, "No se pudo completar", error)
 
@@ -201,6 +230,9 @@ class SettingsDialog(QDialog):
         delete = QPushButton("Borrar modelo seleccionado")
         delete.clicked.connect(self.delete_model)
         form.addRow("", delete)
+        install = QPushButton("Instalar modelos que faltan…")
+        install.clicked.connect(lambda: (SetupWizard(self).exec(), self.refresh_models()))
+        form.addRow("", install)
         ok = QPushButton("Guardar")
         ok.setObjectName("primary")
         ok.clicked.connect(self.accept)
@@ -501,8 +533,9 @@ def save_user_settings(cfg: dict) -> None:
 
 
 def needs_setup() -> bool:
+    """Solo obliga a pasar por el asistente si falta algo imprescindible."""
     _, _, steps = installer.plan()
-    return any(not s.done for s in steps)
+    return any(not s.done and not s.optional for s in steps)
 
 
 def run_gui() -> int:
