@@ -107,7 +107,7 @@ class SetupWorker(QObject):
             self.done.emit(True, "")
         except Exception as e:
             log.exception("Instalación")
-            self.done.emit(False, str(e))
+            self.done.emit(False, f"{type(e).__name__}: {e}\n\n(Más detalles en logs/shortsauto.log)")
 
 
 def start_thread(owner, worker: QObject, finished_signal) -> QThread:

@@ -22,7 +22,7 @@ class ModelSpec:
     key: str
     label: str
     license: str
-    files: dict[str, str]           # ruta relativa en /models -> URL
+    files: dict[str, list[str]]     # ruta relativa en /models -> URLs (la primera que funcione)
     size_gb: float
     extra: dict = field(default_factory=dict)
 
@@ -33,28 +33,26 @@ class ModelSpec:
         return all(p.exists() for p in self.paths())
 
 
+def _qwen(size: str, quant: str) -> list[str]:
+    """Repositorio oficial de Qwen y dos espejos conocidos por si cambia el nombre."""
+    return [f"{HF}/Qwen/Qwen3-{size}-GGUF/resolve/main/Qwen3-{size}-{quant}.gguf",
+            f"{HF}/unsloth/Qwen3-{size}-GGUF/resolve/main/Qwen3-{size}-{quant}.gguf",
+            f"{HF}/bartowski/Qwen_Qwen3-{size}-GGUF/resolve/main/Qwen_Qwen3-{size}-{quant}.gguf"]
+
+
 REGISTRY: dict[str, ModelSpec] = {
     "kokoro": ModelSpec(
         "kokoro", "Kokoro-82M (voz)", "Apache-2.0",
-        {"tts/kokoro-v1.0.onnx": f"{KOKORO}/kokoro-v1.0.onnx",
-         "tts/voices-v1.0.bin": f"{KOKORO}/voices-v1.0.bin"},
+        {"tts/kokoro-v1.0.onnx": [f"{KOKORO}/kokoro-v1.0.onnx"],
+         "tts/voices-v1.0.bin": [f"{KOKORO}/voices-v1.0.bin"]},
         0.35,
     ),
-    "qwen3-1.7b": ModelSpec(
-        "qwen3-1.7b", "Qwen3 1.7B (guion)", "Apache-2.0",
-        {"llm/Qwen3-1.7B-Q8_0.gguf": f"{HF}/Qwen/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q8_0.gguf"},
-        1.8,
-    ),
-    "qwen3-4b": ModelSpec(
-        "qwen3-4b", "Qwen3 4B (guion)", "Apache-2.0",
-        {"llm/Qwen3-4B-Q4_K_M.gguf": f"{HF}/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf"},
-        2.5,
-    ),
-    "qwen3-8b": ModelSpec(
-        "qwen3-8b", "Qwen3 8B (guion)", "Apache-2.0",
-        {"llm/Qwen3-8B-Q4_K_M.gguf": f"{HF}/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf"},
-        5.0,
-    ),
+    "qwen3-1.7b": ModelSpec("qwen3-1.7b", "Qwen3 1.7B (guion)", "Apache-2.0",
+                            {"llm/Qwen3-1.7B-Q8_0.gguf": _qwen("1.7B", "Q8_0")}, 1.8),
+    "qwen3-4b": ModelSpec("qwen3-4b", "Qwen3 4B (guion)", "Apache-2.0",
+                          {"llm/Qwen3-4B-Q4_K_M.gguf": _qwen("4B", "Q4_K_M")}, 2.5),
+    "qwen3-8b": ModelSpec("qwen3-8b", "Qwen3 8B (guion)", "Apache-2.0",
+                          {"llm/Qwen3-8B-Q4_K_M.gguf": _qwen("8B", "Q4_K_M")}, 5.0),
 }
 
 
@@ -87,12 +85,21 @@ def download(url: str, dest: Path, progress: Callable[[int, int], None] | None =
 
 def ensure(key: str, progress: Callable[[str, int, int], None] | None = None) -> ModelSpec:
     spec = REGISTRY[key]
-    for rel, url in spec.files.items():
+    for rel, urls in spec.files.items():
         dest = MODELS / rel
         if dest.exists():
             continue
-        log.info("Descargando %s -> %s", url, dest)
-        download(url, dest, (lambda d, t, rel=rel: progress(rel, d, t)) if progress else None)
+        errors = []
+        for url in urls:
+            log.info("Descargando %s -> %s", url, dest)
+            try:
+                download(url, dest, (lambda d, t, rel=rel: progress(rel, d, t)) if progress else None)
+                break
+            except requests.HTTPError as e:      # 404 u otro: probamos el siguiente espejo
+                errors.append(f"{url}: {e}")
+                dest.with_suffix(dest.suffix + ".part").unlink(missing_ok=True)
+        else:
+            raise RuntimeError(f"No se pudo descargar {rel}:\n" + "\n".join(errors))
     return spec
 
 
@@ -106,13 +113,27 @@ def llama_server_path() -> Path:
     return BIN / "llama" / name
 
 
-def llama_asset_suffix(cuda: bool) -> str:
+def _pick_asset(assets: list[dict], cuda: bool) -> list[dict]:
+    """Elige el zip de llama.cpp para este sistema (y las DLL de CUDA en Windows)."""
+    import re
+    names = {a["name"]: a for a in assets}
     system = platform.system()
     if system == "Windows":
-        return "bin-win-cuda-12.4-x64.zip" if cuda else "bin-win-cpu-x64.zip"
-    if system == "Linux":
-        return "bin-ubuntu-vulkan-x64.zip" if cuda else "bin-ubuntu-x64.zip"
-    return "bin-macos-arm64.zip"
+        if cuda:
+            builds = sorted(n for n in names if re.search(r"^llama-.*-bin-win-cuda-[\d.]+-x64\.zip$", n))
+            if builds:
+                version = re.search(r"cuda-([\d.]+)-x64", builds[0]).group(1)
+                cudart = [n for n in names if n.startswith("cudart-") and f"cuda-{version}-x64" in n]
+                return [names[builds[0]]] + [names[n] for n in cudart[:1]]
+        pattern = r"^llama-.*-bin-win-(cpu-)?x64\.zip$"
+    elif system == "Linux":
+        pattern = r"^llama-.*-bin-ubuntu-x64\.(zip|tar\.gz)$"
+    else:
+        pattern = r"^llama-.*-bin-macos-arm64\.(zip|tar\.gz)$"
+    found = [n for n in names if re.search(pattern, n)]
+    if not found:
+        raise RuntimeError("No encontré llama.cpp para este sistema entre: " + ", ".join(names))
+    return [names[found[0]]]
 
 
 def ensure_llama_server(cuda: bool, progress=None) -> Path:
@@ -120,32 +141,34 @@ def ensure_llama_server(cuda: bool, progress=None) -> Path:
     exe = llama_server_path()
     if exe.exists():
         return exe
+    import tarfile
     import zipfile
 
     with urllib.request.urlopen(
         "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest", timeout=30
     ) as r:
         release = json.load(r)
-    wanted = [llama_asset_suffix(cuda)]
-    if cuda and platform.system() == "Windows":
-        wanted.append("cudart-llama-bin-win-cuda-12.4-x64.zip")   # DLLs de CUDA
     target = BIN / "llama"
-    for suffix in wanted:
-        asset = next(a for a in release["assets"] if a["name"].endswith(suffix)
-                     and (suffix.startswith("cudart") or not a["name"].startswith("cudart")))
-        zpath = BIN / asset["name"]
-        download(asset["browser_download_url"], zpath,
+    target.mkdir(parents=True, exist_ok=True)
+    for asset in _pick_asset(release["assets"], cuda):
+        archive = BIN / asset["name"]
+        download(asset["browser_download_url"], archive,
                  (lambda d, t, n=asset["name"]: progress(n, d, t)) if progress else None)
-        with zipfile.ZipFile(zpath) as z:
-            for member in z.infolist():
-                if member.is_dir():
-                    continue
-                # Los zips traen a veces una carpeta build/bin/; aplanamos.
-                out = target / Path(member.filename).name
-                out.parent.mkdir(parents=True, exist_ok=True)
-                out.write_bytes(z.read(member))
-        zpath.unlink()
+        # Los paquetes traen a veces una carpeta build/bin/; aplanamos.
+        if archive.name.endswith(".zip"):
+            with zipfile.ZipFile(archive) as z:
+                for m in z.infolist():
+                    if not m.is_dir():
+                        (target / Path(m.filename).name).write_bytes(z.read(m))
+        else:
+            with tarfile.open(archive) as t:
+                for m in t.getmembers():
+                    if m.isfile():
+                        (target / Path(m.name).name).write_bytes(t.extractfile(m).read())
+        archive.unlink()
     if platform.system() != "Windows":
         for f in target.iterdir():
             f.chmod(0o755)
+    if not exe.exists():
+        raise RuntimeError(f"El paquete de llama.cpp no contenía {exe.name}")
     return exe

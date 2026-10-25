@@ -30,6 +30,22 @@ jobs:
         with:
           name: ShortsAuto-Setup
           path: dist/ShortsAuto-Setup-*.exe
+      # Instalación real: descarga los modelos y genera un vídeo con guion del LLM.
+      # Se hace sobre una copia para no meter los modelos en el instalador.
+      - name: Prueba completa (asistente + vídeo)
+        shell: pwsh
+        run: |
+          Copy-Item dist/ShortsAuto smoke -Recurse
+          smoke/python/python.exe packaging/smoke_test.py smoke
+      - name: Guardar resultado de la prueba
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prueba-completa
+          path: |
+            smoke/output/
+            smoke/logs/
+          if-no-files-found: ignore
       - name: Publicar en Releases
         uses: softprops/action-gh-release@v2
         with:
