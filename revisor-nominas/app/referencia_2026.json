@@ -1,0 +1,16 @@
+{
+  "_nota": "Tipos de referencia para España (Régimen General). Revisa estos valores cada año: la app los usa para comprobar los cálculos y se los pasa a la IA como contexto. Los marcados con verificado=false deben confirmarse con el BOE / Orden de cotización del año.",
+  "anio": 2026,
+  "cotizacion_trabajador": {
+    "contingencias_comunes": {"pct": 4.70, "base": "base_cc", "verificado": true},
+    "desempleo_indefinido": {"pct": 1.55, "base": "base_cp", "verificado": true},
+    "desempleo_temporal": {"pct": 1.60, "base": "base_cp", "verificado": true},
+    "formacion_profesional": {"pct": 0.10, "base": "base_cp", "verificado": true},
+    "mei": {"pct": 0.15, "base": "base_cc", "verificado": true},
+    "horas_extra_fuerza_mayor": {"pct": 2.00, "base": "horas_extra", "verificado": true},
+    "horas_extra_resto": {"pct": 4.70, "base": "horas_extra", "verificado": true}
+  },
+  "base_maxima_mensual": {"importe": 5101.20, "verificado": false},
+  "smi_mensual_14_pagas": {"importe": null, "verificado": false, "nota": "Rellenar con el SMI vigente. 2025: 1184 €/mes en 14 pagas."},
+  "tolerancia_euros": 0.05
+}

@@ -1,0 +1,97 @@
+{
+ "veredicto": "revisar",
+ "resumen": "Tu nómina cuadra en casi todo: las sumas y el líquido son correctos. Hay un descuento (MEI) calculado con el porcentaje del año pasado; la diferencia es pequeña pero conviene avisar a la empresa.",
+ "puntos": [
+  {
+   "concepto": "Sumas y líquido",
+   "estado": "ok",
+   "explicacion": "Devengado menos deducciones da exactamente lo que cobras: 1.997,23 €."
+  },
+  {
+   "concepto": "Contingencias comunes y desempleo",
+   "estado": "ok",
+   "explicacion": "Se aplican los porcentajes legales (4,70 % y 1,55 % por contrato indefinido)."
+  },
+  {
+   "concepto": "MEI",
+   "estado": "error",
+   "explicacion": "Se aplica 0,13 % (tipo de 2025). En 2026 el trabajador paga 0,15 %. Te descuentan 0,49 € de menos, lo que puede generar un ajuste posterior."
+  },
+  {
+   "concepto": "IRPF 12 %",
+   "estado": "aviso",
+   "explicacion": "Es un porcentaje habitual para este sueldo, pero depende de tu situación familiar. Revisa que la empresa tenga tu modelo 145 actualizado."
+  },
+  {
+   "concepto": "Salario según convenio",
+   "estado": "aviso",
+   "explicacion": "No puedo confirmar el salario mínimo de tu categoría sin las tablas del convenio. Consúltalas en el boletín de tu provincia."
+  }
+ ],
+ "datos": {
+  "empresa": "Talleres Ejemplo S.L.",
+  "trabajador": "Laura M.",
+  "categoria": "Oficial 1ª administrativa",
+  "convenio": "Oficinas y despachos (provincial)",
+  "periodo": "Octubre 2026",
+  "tipo_contrato": "indefinido",
+  "devengos": [
+   {
+    "concepto": "Salario base",
+    "importe": 1800.0
+   },
+   {
+    "concepto": "Plus convenio",
+    "importe": 300.0
+   },
+   {
+    "concepto": "Prorrata pagas extra",
+    "importe": 350.0
+   }
+  ],
+  "deducciones": [
+   {
+    "concepto": "Contingencias comunes",
+    "tipo": "contingencias_comunes",
+    "porcentaje": 4.7,
+    "base": 2450.0,
+    "importe": 115.15
+   },
+   {
+    "concepto": "Desempleo",
+    "tipo": "desempleo",
+    "porcentaje": 1.55,
+    "base": 2450.0,
+    "importe": 37.98
+   },
+   {
+    "concepto": "Formación profesional",
+    "tipo": "formacion_profesional",
+    "porcentaje": 0.1,
+    "base": 2450.0,
+    "importe": 2.45
+   },
+   {
+    "concepto": "MEI",
+    "tipo": "mei",
+    "porcentaje": 0.13,
+    "base": 2450.0,
+    "importe": 3.19
+   },
+   {
+    "concepto": "IRPF",
+    "tipo": "irpf",
+    "porcentaje": 12.0,
+    "base": 2450.0,
+    "importe": 294.0
+   }
+  ],
+  "total_devengado": 2450.0,
+  "total_deducciones": 452.77,
+  "liquido": 1997.23,
+  "base_cc": 2450.0,
+  "base_cp": 2450.0,
+  "base_irpf": 2450.0,
+  "pct_irpf": 12.0
+ }
+}

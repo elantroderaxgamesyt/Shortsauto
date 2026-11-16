@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revisor de nóminas</title>
+<link rel="stylesheet" href="/static/estilos.css">
+</head>
+<body>
+<header class="cabecera">
+  <div class="marca"><span class="logo">€</span> Revisor de nóminas</div>
+  <div class="planes" role="tablist">
+    <button class="plan activo" data-plan="free">Free</button>
+    <button class="plan" data-plan="pro">Pro</button>
+  </div>
+</header>
+
+<main>
+  <section id="aviso-demo" class="aviso" hidden>
+    Modo demo: no hay clave de API configurada, así que verás un informe de ejemplo.
+  </section>
+
+  <section class="tarjeta" id="subida">
+    <h1>¿Tu nómina está bien?</h1>
+    <p class="sub">Sube tu nómina en PDF o una foto. Nora, nuestra asesora con IA, la revisa concepto por concepto y te explica qué está bien y qué no.</p>
+
+    <div class="comparativa">
+      <div class="col" data-plan="free">
+        <h3>Free</h3>
+        <ul>
+          <li>Veredicto y resumen sencillo</li>
+          <li>Los 5 puntos más importantes</li>
+          <li>Comprobación de sumas y líquido</li>
+          <li>3 preguntas a Nora</li>
+        </ul>
+      </div>
+      <div class="col" data-plan="pro">
+        <h3>Pro</h3>
+        <ul>
+          <li>Revisión completa concepto a concepto</li>
+          <li>Recalcula Seguridad Social e IRPF</li>
+          <li>Explicación de cada línea de la nómina</li>
+          <li>Preguntas para RRHH y borrador de reclamación</li>
+          <li>Chat ilimitado e informe imprimible</li>
+        </ul>
+      </div>
+    </div>
+
+    <form id="form">
+      <label class="zona" id="zona">
+        <input type="file" id="archivo" accept="application/pdf,image/png,image/jpeg,image/webp" hidden>
+        <span id="zona-texto">Arrastra aquí tu nómina o <u>elige un archivo</u></span>
+      </label>
+      <div id="campo-codigo" hidden>
+        <label>Código Pro <input id="codigo" type="password" autocomplete="off" placeholder="Opcional en el prototipo"></label>
+      </div>
+      <button type="submit" class="primario" id="btn-analizar" disabled>Revisar nómina</button>
+      <p class="letra-pequena">Tu nómina se envía a la IA sólo para analizarla; la app no la guarda. Esto no sustituye el asesoramiento de un profesional.</p>
+    </form>
+  </section>
+
+  <section id="cargando" class="tarjeta centro" hidden>
+    <div class="spinner"></div>
+    <p>Nora está revisando tu nómina…</p>
+  </section>
+
+  <section id="error" class="aviso error" hidden></section>
+
+  <section id="resultado" hidden>
+    <div class="tarjeta" id="informe"></div>
+    <div class="tarjeta" id="chat">
+      <h2>Pregúntale a Nora</h2>
+      <p class="sub" id="chat-limite"></p>
+      <div id="mensajes"></div>
+      <form id="form-chat">
+        <input id="pregunta" placeholder="Ej.: ¿Por qué me quitan tanto de IRPF?" autocomplete="off">
+        <button class="primario">Enviar</button>
+      </form>
+    </div>
+    <div class="acciones">
+      <button id="btn-nueva">Revisar otra nómina</button>
+      <button id="btn-imprimir" hidden>Imprimir / guardar PDF</button>
+    </div>
+  </section>
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>
