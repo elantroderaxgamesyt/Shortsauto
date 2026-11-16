@@ -3,7 +3,7 @@ name: Instalador Windows
 on:
   push:
     branches: [main]
-    paths-ignore: ["**.md"]
+    paths-ignore: ["**.md", "revisor-nominas/**", ".github/workflows/revisor-nominas.yml"]
   workflow_dispatch:
 
 concurrency:
