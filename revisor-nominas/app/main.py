@@ -79,21 +79,49 @@ async def analizar(archivo: UploadFile = File(...), plan: str = Form("free"), ui
         raise HTTPException(502, "La IA ha devuelto un error. Inténtalo de nuevo.")
 
     calculos = [c.model_dump() for c in para_plan(p.comprobaciones, informe.datos)]
-    contenido = {"informe": informe.model_dump(), "calculos": calculos}
+    contenido = {"informe": informe.model_dump(), "calculos": calculos, "demo": not ia.hay_credenciales()}
     try:
         # El crédito sólo se descuenta si el análisis ha salido bien.
         rid = cuentas.guardar_revision(uid, plan, pago, contenido)
     except cuentas.SinSaldo as e:
         raise HTTPException(402, str(e))
 
+    rev = cuentas.revision(uid, rid)
+    return {**_revision_json(rev), "cuenta": cuentas.resumen(uid)}
+
+
+def _revision_json(rev) -> dict:
+    contenido = json.loads(rev["informe"])
     return {
-        "id": rid,
-        "plan": p.nombre,
-        "demo": not ia.hay_credenciales(),
-        **contenido,
-        "preguntas_chat": p.preguntas_chat,
-        "cuenta": cuentas.resumen(uid),
+        "id": rev["id"],
+        "plan": rev["plan"],
+        "fecha": rev["fecha"],
+        "demo": contenido.get("demo", False),
+        "informe": contenido["informe"],
+        "calculos": contenido["calculos"],
+        "preguntas_chat": PLANES[rev["plan"]].preguntas_chat,
+        "preguntas_usadas": rev["preguntas"],
     }
+
+
+@app.get("/api/revisiones")
+def revisiones(uid: str = Depends(usuario_id)):
+    """Historial: lo justo para pintar la lista."""
+    out = []
+    for r in cuentas.listar_revisiones(uid):
+        inf = json.loads(r["informe"])["informe"]
+        d = inf["datos"]
+        out.append({"id": r["id"], "plan": r["plan"], "fecha": r["fecha"], "veredicto": inf["veredicto"],
+                    "periodo": d.get("periodo"), "empresa": d.get("empresa"), "liquido": d.get("liquido")})
+    return out
+
+
+@app.get("/api/revisiones/{rid}")
+def revision(rid: str, uid: str = Depends(usuario_id)):
+    rev = cuentas.revision(uid, rid)
+    if not rev:
+        raise HTTPException(404, "Revisión no encontrada.")
+    return _revision_json(rev)
 
 
 class Mensaje(BaseModel):

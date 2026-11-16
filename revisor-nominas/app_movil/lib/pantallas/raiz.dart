@@ -1,0 +1,66 @@
+import 'package:material_ui/material_ui.dart';
+
+import '../estado.dart';
+import '../tema.dart';
+import 'cuenta.dart';
+import 'historial.dart';
+import 'inicio.dart';
+
+/// Navegación principal: barra inferior en móvil y barra lateral en Windows / tablet.
+class PantallaRaiz extends StatelessWidget {
+  const PantallaRaiz({super.key});
+
+  static const _destinos = [
+    (Icons.home_outlined, Icons.home_rounded, 'Inicio'),
+    (Icons.history_rounded, Icons.history_rounded, 'Mis revisiones'),
+    (Icons.person_outline_rounded, Icons.person_rounded, 'Mi cuenta'),
+  ];
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder(
+        valueListenable: pestana,
+        builder: (context, i, _) {
+          final ancho = MediaQuery.sizeOf(context).width >= 840;
+          final cuerpo = IndexedStack(index: i, children: const [PantallaInicio(), PantallaHistorial(), PantallaCuenta()]);
+          if (!ancho) {
+            return Scaffold(
+              body: cuerpo,
+              bottomNavigationBar: NavigationBar(
+                selectedIndex: i,
+                onDestinationSelected: (n) => pestana.value = n,
+                destinations: [
+                  for (final (ic, sel, txt) in _destinos)
+                    NavigationDestination(icon: Icon(ic), selectedIcon: Icon(sel), label: txt),
+                ],
+              ),
+            );
+          }
+          return Scaffold(
+            body: Row(children: [
+              NavigationRail(
+                selectedIndex: i,
+                onDestinationSelected: (n) => pestana.value = n,
+                labelType: NavigationRailLabelType.all,
+                leading: const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: _Logo()),
+                destinations: [
+                  for (final (ic, sel, txt) in _destinos)
+                    NavigationRailDestination(icon: Icon(ic), selectedIcon: Icon(sel), label: Text(txt)),
+                ],
+              ),
+              VerticalDivider(width: 1, color: Tonos.de(context).borde),
+              Expanded(child: cuerpo),
+            ]),
+          );
+        },
+      );
+}
+
+class _Logo extends StatelessWidget {
+  const _Logo();
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset('assets/icono/icono.png', width: 44, height: 44),
+      );
+}

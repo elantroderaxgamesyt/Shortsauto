@@ -155,6 +155,21 @@ def test_codigo_canje():
     assert c.post("/api/canjear", json={"codigo": cod}, headers=U2).status_code == 400
 
 
+# ---- Historial ----
+
+def test_historial():
+    a = analizar("free").json()
+    comprar("revision_pro", "prueba-h")
+    b = analizar("pro").json()
+    lista = c.get("/api/revisiones", headers=U1).json()
+    assert [x["id"] for x in lista] == [b["id"], a["id"]]
+    assert lista[0]["plan"] == "pro" and lista[0]["veredicto"] == "revisar" and lista[0]["liquido"] == 1997.23
+    r = c.get(f"/api/revisiones/{a['id']}", headers=U1).json()
+    assert r["informe"] == a["informe"] and r["preguntas_chat"] == 1
+    assert c.get(f"/api/revisiones/{a['id']}", headers=U2).status_code == 404
+    assert c.get("/api/revisiones", headers=U2).json() == []
+
+
 # ---- Chat ----
 
 def test_limite_chat_free():

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -7,8 +8,8 @@ import 'widgets.dart' show eur, pct;
 
 /// Informe Pro en PDF (abre el diálogo de imprimir / guardar como PDF / compartir).
 Future<void> imprimirInforme(Revision r) async {
-  final fuente = await PdfGoogleFonts.robotoRegular();
-  final negrita = await PdfGoogleFonts.robotoBold();
+  final fuente = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Regular.ttf'));
+  final negrita = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Bold.ttf'));
   final doc = pw.Document(theme: pw.ThemeData.withFont(base: fuente, bold: negrita));
   final inf = r.informe;
   final d = r.datos;

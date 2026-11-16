@@ -146,6 +146,11 @@ def revision(uid: str, rid: str) -> sqlite3.Row | None:
     return db().execute("SELECT * FROM revisiones WHERE id = ? AND usuario = ?", (rid, uid)).fetchone()
 
 
+def listar_revisiones(uid: str, limite: int = 50) -> list[sqlite3.Row]:
+    return db().execute("SELECT id, plan, informe, fecha FROM revisiones WHERE usuario = ? "
+                        "ORDER BY fecha DESC LIMIT ?", (uid, limite)).fetchall()
+
+
 def sumar_pregunta(rid: str) -> None:
     with _lock:
         db().execute("UPDATE revisiones SET preguntas = preguntas + 1 WHERE id = ?", (rid,))

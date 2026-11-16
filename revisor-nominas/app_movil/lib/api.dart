@@ -38,6 +38,21 @@ class Revision {
   Map<String, dynamic> get datos => informe['datos'];
   List get calculos => j['calculos'];
   int get preguntasChat => j['preguntas_chat'] ?? 0;
+  int get preguntasUsadas => j['preguntas_usadas'] ?? 0;
+  String? get fecha => j['fecha'];
+}
+
+/// Fila del historial.
+class ResumenRevision {
+  ResumenRevision(this.j);
+  final Map<String, dynamic> j;
+  String get id => j['id'];
+  bool get pro => j['plan'] == 'pro';
+  String get veredicto => j['veredicto'];
+  String? get periodo => j['periodo'];
+  String? get empresa => j['empresa'];
+  num? get liquido => j['liquido'];
+  String? get fecha => j['fecha'];
 }
 
 class Api {
@@ -60,26 +75,39 @@ class Api {
   Map<String, String> get _cab => {'X-Usuario': usuario};
   Uri _u(String ruta) => Uri.parse('$apiUrl$ruta');
 
-  Future<Map<String, dynamic>> _json(Future<http.Response> peticion) async {
+  Future<http.Response> _peticion(Future<http.Response> peticion) async {
     final http.Response r;
     try {
       r = await peticion.timeout(const Duration(minutes: 5));
     } catch (_) {
-      throw ErrorApi('No se ha podido conectar con el servidor. Revisa tu conexión.');
-    }
-    final cuerpo = utf8.decode(r.bodyBytes);
-    Map<String, dynamic> j;
-    try {
-      j = jsonDecode(cuerpo);
-    } catch (_) {
-      throw ErrorApi('Respuesta inesperada del servidor (${r.statusCode}).', r.statusCode);
+      throw ErrorApi('No se ha podido conectar con el servidor. Revisa tu conexión a internet.');
     }
     if (r.statusCode >= 400) {
-      final d = j['detail'];
-      throw ErrorApi(d is String ? d : 'Error ${r.statusCode}', r.statusCode);
+      String msg = 'Algo ha ido mal (error ${r.statusCode}). Inténtalo de nuevo.';
+      try {
+        final d = jsonDecode(utf8.decode(r.bodyBytes))['detail'];
+        if (d is String) msg = d;
+      } catch (_) {}
+      throw ErrorApi(msg, r.statusCode);
     }
-    return j;
+    return r;
   }
+
+  Future<Map<String, dynamic>> _json(Future<http.Response> peticion) async {
+    final r = await _peticion(peticion);
+    try {
+      return jsonDecode(utf8.decode(r.bodyBytes));
+    } catch (_) {
+      throw ErrorApi('Respuesta inesperada del servidor.', r.statusCode);
+    }
+  }
+
+  Future<List<ResumenRevision>> revisiones() async {
+    final r = await _peticion(http.get(_u('/api/revisiones'), headers: _cab));
+    return [for (final x in jsonDecode(utf8.decode(r.bodyBytes)) as List) ResumenRevision(x)];
+  }
+
+  Future<Revision> revision(String id) async => Revision(await _json(http.get(_u('/api/revisiones/$id'), headers: _cab)));
 
   Future<Cuenta> cuenta() async => Cuenta(await _json(http.get(_u('/api/cuenta'), headers: _cab)));
 

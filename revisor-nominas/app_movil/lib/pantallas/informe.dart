@@ -2,164 +2,146 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
-import '../compras.dart';
-import '../main.dart';
 import '../pdf_informe.dart';
+import '../tema.dart';
 import '../widgets.dart';
 import 'chat.dart';
-import 'tienda.dart';
+import 'nueva_revision.dart';
 
-const _veredictos = {
-  'correcta': (Icons.check_circle, 'Tu nómina parece correcta'),
-  'revisar': (Icons.warning_amber_rounded, 'Hay puntos que conviene revisar'),
-  'incorrecta': (Icons.error, 'Hemos encontrado errores'),
-  'ilegible': (Icons.search_off, 'No se ha podido leer bien la nómina'),
+const _titulos = {
+  'correcta': 'Tu nómina está bien',
+  'revisar': 'Hay puntos que revisar',
+  'incorrecta': 'Hemos encontrado errores',
+  'ilegible': 'No se ha podido leer bien',
 };
 
-class PantallaInforme extends StatefulWidget {
-  const PantallaInforme(this.r, {super.key, required this.datos, required this.nombre});
+class PantallaInforme extends StatelessWidget {
+  const PantallaInforme(this.r, {super.key, this.archivo});
   final Revision r;
-  final Uint8List datos;
-  final String nombre;
-
-  @override
-  State<PantallaInforme> createState() => _PantallaInformeState();
-}
-
-class _PantallaInformeState extends State<PantallaInforme> {
-  bool mejorando = false;
-
-  Future<void> mejorarAPro() async {
-    if (!(Tienda.yo.cuenta?.puedePro ?? false)) {
-      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PantallaTienda()));
-      if (!(Tienda.yo.cuenta?.puedePro ?? false)) return;
-    }
-    setState(() => mejorando = true);
-    try {
-      final r = await Api.yo.analizar(widget.datos, widget.nombre, 'pro');
-      await Tienda.yo.refrescarCuenta();
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => PantallaInforme(r, datos: widget.datos, nombre: widget.nombre),
-        ),
-      );
-    } on ErrorApi catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
-    } finally {
-      if (mounted) setState(() => mejorando = false);
-    }
-  }
+  final Archivo? archivo; // si viene de una revisión recién hecha, para pasarla a Pro
 
   @override
   Widget build(BuildContext context) {
-    final r = widget.r;
     final inf = r.informe;
-    final d = r.datos;
-    final t = Theme.of(context);
-    final (icono, titulo) = _veredictos[inf['veredicto']] ?? _veredictos['revisar']!;
-    final cv = ColoresEstado.de(context, inf['veredicto']);
-    final acento = r.pro ? morado : azul;
+    final tonos = Tonos.de(context);
+    final puntos = r.pro ? inf['comprobaciones'] as List : inf['puntos'] as List;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(r.pro ? 'Informe Pro' : 'Informe'),
-        actions: [
-          if (r.pro)
-            IconButton(
-              tooltip: 'Guardar o imprimir PDF',
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-              onPressed: () => imprimirInforme(r),
-            ),
-        ],
+        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Text(r.pro ? 'Informe completo' : 'Informe'),
+            if (r.pro) ...[const SizedBox(width: 8), const InsigniaPro()],
+          ]),
+          if (r.fecha != null)
+            Text(fechaCorta(r.fecha), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tonos.suave)),
+        ]),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: acento,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.chat_bubble_outline),
-        label: const Text('Pregúntale a Nora'),
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaChat(r))),
-      ),
+      bottomNavigationBar: _BarraAcciones(r),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-          children: [
-            Centrado(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (r.demo)
-                    Card(
-                      color: ColoresEstado.de(context, 'aviso').fondo,
-                      child: const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Text('Modo demo: el servidor no tiene clave de IA. Esto es un informe de ejemplo.'),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: cv.fondo, borderRadius: BorderRadius.circular(12)),
-                    child: Row(
-                      children: [
-                        Icon(icono, color: cv.texto, size: 32),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                titulo,
-                                style: t.textTheme.titleMedium?.copyWith(color: cv.texto, fontWeight: FontWeight.w700),
-                              ),
-                              Text(
-                                [d['periodo'], d['empresa']].whereType<String>().join(' · '),
-                                style: TextStyle(color: cv.texto),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(inf['resumen'], style: t.textTheme.bodyLarge),
-                  const SizedBox(height: 12),
-                  _Cifras(d),
-                  if (!r.pro) ...[
-                    Seccion('Lo más importante', [for (final p in inf['puntos']) PuntoInforme(p)]),
-                    Seccion('Comprobación de cálculos', [_TablaCalculos(r.calculos)]),
-                    const SizedBox(height: 16),
-                    _MejorarPro(onPressed: mejorando ? null : mejorarAPro, cargando: mejorando),
-                  ] else ...[
-                    Seccion('Revisión concepto a concepto', [for (final p in inf['comprobaciones']) PuntoInforme(p)]),
-                    Seccion('Cálculos recalculados por la app', [_TablaCalculos(r.calculos)]),
-                    Seccion('Detalle de la nómina', [_Detalle(d)]),
-                    Seccion('Qué significa cada concepto', [
-                      for (final p in inf['explicacion_conceptos']) PuntoInforme(p),
-                    ]),
-                    Seccion('Recomendaciones', [for (final x in inf['recomendaciones']) _Vineta(x)]),
-                    Seccion('Preguntas para RRHH o la gestoría', [
-                      for (final x in inf['preguntas_para_rrhh']) _Vineta(x),
-                    ]),
-                    Seccion('Resumen para la reclamación', [_Reclamacion(inf['reclamacion'])]),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Confianza del análisis: ${inf['confianza']}. ${inf['limitaciones']}',
-                      style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Text(
-                    'Informe orientativo generado con IA. Para reclamar formalmente, consulta con un graduado social, '
-                    'sindicato o abogado laboralista.',
-                    style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
-                  ),
-                ],
-              ),
+        bottom: false,
+        child: Pagina(children: [
+          if (r.demo) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Estilo.de('aviso').fondo(context), borderRadius: BorderRadius.circular(12)),
+              child: Text('Modo demo: el servidor no tiene clave de IA y este es un informe de ejemplo.',
+                  style: TextStyle(color: Estilo.de('aviso').texto(context))),
             ),
+            const Hueco(12),
           ],
-        ),
+          _Cabecera(r, puntos),
+          const Hueco(12),
+          _Cifras(r.datos),
+          const Hueco(12),
+          Panel(
+            titulo: 'Resumen',
+            icono: Icons.notes_rounded,
+            padding: const EdgeInsets.all(16),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(inf['resumen'], style: Theme.of(context).textTheme.bodyLarge),
+            ),
+          ),
+          const Hueco(12),
+          if (!r.pro) ...[
+            _Puntos('Lo más importante', Icons.flag_outlined, puntos),
+            const Hueco(12),
+            Panel(titulo: 'Comprobación de cálculos', icono: Icons.calculate_outlined, child: _TablaCalculos(r.calculos)),
+            const Hueco(16),
+            _Mejorar(archivo),
+          ] else ...[
+            if (inf['reclamacion']['procede'] == true) ...[_Reclamacion(inf['reclamacion']), const Hueco(12)],
+            _Puntos('Revisión concepto a concepto', Icons.fact_check_outlined, puntos),
+            const Hueco(12),
+            Panel(
+              titulo: 'Cálculos rehechos por la app',
+              icono: Icons.calculate_outlined,
+              child: _TablaCalculos(r.calculos),
+            ),
+            const Hueco(12),
+            Panel(titulo: 'Detalle de tu nómina', icono: Icons.receipt_long_outlined, child: _Detalle(r.datos)),
+            const Hueco(12),
+            _Desplegable('Qué significa cada concepto', Icons.menu_book_outlined, [
+              for (final (i, p) in (inf['explicacion_conceptos'] as List).indexed)
+                PuntoInforme(p, ultimo: i == (inf['explicacion_conceptos'] as List).length - 1),
+            ]),
+            const Hueco(12),
+            _Lista('Recomendaciones', Icons.lightbulb_outline_rounded, inf['recomendaciones']),
+            const Hueco(12),
+            _Lista('Preguntas para RRHH o la gestoría', Icons.forum_outlined, inf['preguntas_para_rrhh']),
+            if (inf['reclamacion']['procede'] != true) ...[const Hueco(12), _Reclamacion(inf['reclamacion'])],
+            const Hueco(16),
+            Text('Fiabilidad del análisis: ${inf['confianza']}. ${inf['limitaciones']}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tonos.suave)),
+          ],
+          const Hueco(12),
+          Text(
+            'Informe orientativo generado con IA. Para reclamar formalmente, consulta con un graduado social, '
+            'sindicato o abogado laboralista.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tonos.suave),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _Cabecera extends StatelessWidget {
+  const _Cabecera(this.r, this.puntos);
+  final Revision r;
+  final List puntos;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final v = r.informe['veredicto'] as String;
+    final e = Estilo.de(v);
+    final d = r.datos;
+    final sub = [d['periodo'], d['empresa']].whereType<String>().join(' · ');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(color: e.fondo(context), borderRadius: BorderRadius.circular(14)),
+              child: Icon(e.icono, color: e.texto(context), size: 30),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_titulos[v] ?? '', style: t.textTheme.titleLarge),
+                if (sub.isNotEmpty)
+                  Text(sub, style: t.textTheme.bodyMedium?.copyWith(color: Tonos.de(context).suave)),
+              ]),
+            ),
+          ]),
+          const Hueco(14),
+          Recuento(puntos),
+        ]),
       ),
     );
   }
@@ -172,32 +154,57 @@ class _Cifras extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final tonos = Tonos.de(context);
     Widget cifra(String txt, dynamic v, {bool fuerte = false}) => Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: fuerte ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(txt, style: t.textTheme.labelSmall),
-            FittedBox(
-              child: Text(eur(v), style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: fuerte ? Marca.degradado : null,
+              color: fuerte ? null : tonos.tarjeta,
+              border: fuerte ? null : Border.all(color: tonos.borde),
+              borderRadius: BorderRadius.circular(14),
             ),
-          ],
-        ),
-      ),
-    );
-    return Row(
-      children: [
-        cifra('Devengado', d['total_devengado']),
-        const SizedBox(width: 8),
-        cifra('Deducciones', d['total_deducciones']),
-        const SizedBox(width: 8),
-        cifra('Líquido', d['liquido'], fuerte: true),
-      ],
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(txt,
+                  style: t.textTheme.labelMedium
+                      ?.copyWith(color: fuerte ? Colors.white.withValues(alpha: .85) : tonos.suave)),
+              const SizedBox(height: 4),
+              FittedBox(
+                child: Text(eur(v),
+                    style: t.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700, color: fuerte ? Colors.white : null)),
+              ),
+            ]),
+          ),
+        );
+    return Row(children: [
+      cifra('Bruto', d['total_devengado']),
+      const SizedBox(width: 8),
+      cifra('Descuentos', d['total_deducciones']),
+      const SizedBox(width: 8),
+      cifra('Cobras', d['liquido'], fuerte: true),
+    ]);
+  }
+}
+
+class _Puntos extends StatelessWidget {
+  const _Puntos(this.titulo, this.icono, this.puntos);
+  final String titulo;
+  final IconData icono;
+  final List puntos;
+
+  @override
+  Widget build(BuildContext context) {
+    // Primero los errores, luego lo que hay que revisar y al final lo correcto.
+    const orden = {'error': 0, 'aviso': 1, 'ok': 2};
+    final lista = [...puntos]..sort((a, b) => (orden[a['estado']] ?? 1).compareTo(orden[b['estado']] ?? 1));
+    return Panel(
+      titulo: titulo,
+      icono: icono,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 2),
+      child: Column(children: [
+        for (final (i, p) in lista.indexed) PuntoInforme(p, ultimo: i == lista.length - 1),
+      ]),
     );
   }
 }
@@ -209,42 +216,29 @@ class _TablaCalculos extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    return Column(
-      children: [
-        for (final c in calculos)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 7),
-            child: Row(
-              children: [
-                Expanded(child: Text(c['concepto'], style: t.textTheme.bodyMedium)),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      _valor(c, 'importe_nomina'),
-                      style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    if (c['estado'] != 'ok' && c['importe_esperado'] != null)
-                      Text(
-                        'debería: ${_valor(c, 'importe_esperado')}',
-                        style: t.textTheme.bodySmall?.copyWith(color: ColoresEstado.de(context, c['estado']).texto),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 72,
-                  child: Align(alignment: Alignment.centerRight, child: Etiqueta(c['estado'])),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
+    final tonos = Tonos.de(context);
+    String valor(Map c, String k) => (c['concepto'] as String).startsWith('Porcentaje') ? pct(c[k]) : eur(c[k]);
+    return Column(children: [
+      for (final (i, c) in calculos.indexed)
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+              border: i == calculos.length - 1 ? null : Border(bottom: BorderSide(color: tonos.borde))),
+          child: Row(children: [
+            Icon(Estilo.de(c['estado']).icono, size: 18, color: Estilo.de(c['estado']).texto(context)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(c['concepto'], style: t.textTheme.bodyMedium)),
+            const SizedBox(width: 8),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(valor(c, 'importe_nomina'), style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+              if (c['estado'] != 'ok' && c['importe_esperado'] != null)
+                Text('debería ser ${valor(c, 'importe_esperado')}',
+                    style: t.textTheme.bodySmall?.copyWith(color: Estilo.de(c['estado']).texto(context))),
+            ]),
+          ]),
+        ),
+    ]);
   }
-
-  String _valor(Map c, String k) => (c['concepto'] as String).startsWith('Porcentaje') ? pct(c[k]) : eur(c[k]);
 }
 
 class _Detalle extends StatelessWidget {
@@ -254,43 +248,88 @@ class _Detalle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final tonos = Tonos.de(context);
     Widget fila(String a, String b, {bool cab = false}) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          Expanded(child: Text(a, style: cab ? t.textTheme.titleSmall : null)),
-          Text(b, style: cab ? t.textTheme.titleSmall : null),
-        ],
+          padding: EdgeInsets.only(top: cab ? 12 : 6, bottom: cab ? 4 : 6),
+          child: Row(children: [
+            Expanded(
+                child: Text(a,
+                    style: cab
+                        ? t.textTheme.labelLarge?.copyWith(color: tonos.suave, letterSpacing: .3)
+                        : t.textTheme.bodyMedium)),
+            Text(b, style: cab ? t.textTheme.labelLarge?.copyWith(color: tonos.suave) : t.textTheme.bodyMedium),
+          ]),
+        );
+    return Column(children: [
+      fila('LO QUE GANAS', 'IMPORTE', cab: true),
+      for (final l in d['devengos']) fila(l['concepto'], eur(l['importe'])),
+      const Divider(height: 16),
+      fila('LO QUE TE DESCUENTAN', 'IMPORTE', cab: true),
+      for (final l in d['deducciones'])
+        fila('${l['concepto']}${l['porcentaje'] != null ? ' (${pct(l['porcentaje'])})' : ''}', eur(l['importe'])),
+      const Divider(height: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(children: [
+          Expanded(child: Text('Líquido a percibir', style: t.textTheme.titleSmall)),
+          Text(eur(d['liquido']), style: t.textTheme.titleSmall),
+        ]),
       ),
-    );
-    return Column(
-      children: [
-        fila('Devengos', 'Importe', cab: true),
-        for (final l in d['devengos']) fila(l['concepto'], eur(l['importe'])),
-        const Divider(),
-        fila('Deducciones', 'Importe', cab: true),
-        for (final l in d['deducciones'])
-          fila('${l['concepto']}${l['porcentaje'] != null ? ' (${pct(l['porcentaje'])})' : ''}', eur(l['importe'])),
-      ],
-    );
+      const Hueco(6),
+    ]);
   }
 }
 
-class _Vineta extends StatelessWidget {
-  const _Vineta(this.texto);
-  final String texto;
+class _Desplegable extends StatelessWidget {
+  const _Desplegable(this.titulo, this.icono, this.hijos);
+  final String titulo;
+  final IconData icono;
+  final List<Widget> hijos;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 3),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('•  '),
-        Expanded(child: Text(texto)),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) => Card(
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            leading: Icon(icono, color: Theme.of(context).colorScheme.primary, size: 20),
+            title: Text(titulo, style: Theme.of(context).textTheme.titleMedium),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            children: hijos,
+          ),
+        ),
+      );
+}
+
+class _Lista extends StatelessWidget {
+  const _Lista(this.titulo, this.icono, this.items);
+  final String titulo;
+  final IconData icono;
+  final List items;
+
+  @override
+  Widget build(BuildContext context) => Panel(
+        titulo: titulo,
+        icono: icono,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+        child: Column(children: [
+          for (final x in items)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 7),
+                  child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, shape: BoxShape.circle)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(x)),
+              ]),
+            ),
+        ]),
+      );
 }
 
 class _Reclamacion extends StatelessWidget {
@@ -300,77 +339,102 @@ class _Reclamacion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final tonos = Tonos.de(context);
     final procede = r['procede'] == true;
-    final c = ColoresEstado.de(context, procede ? 'error' : 'ok');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: c.fondo, borderRadius: BorderRadius.circular(12)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(procede ? Icons.gavel : Icons.verified, color: c.texto),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      procede ? 'Tienes algo que reclamar' : 'No hace falta reclamar',
-                      style: t.textTheme.titleSmall?.copyWith(color: c.texto, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  if (r['total_reclamado'] != null)
-                    Text(
-                      eur(r['total_reclamado']),
-                      style: t.textTheme.titleMedium?.copyWith(color: c.texto, fontWeight: FontWeight.w800),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(r['resumen']),
-            ],
-          ),
-        ),
-        for (final p in r['puntos'])
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(p['concepto'], style: t.textTheme.titleSmall),
-                      Text(p['motivo'], style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(eur(p['importe']), style: t.textTheme.titleSmall),
-              ],
+    final e = Estilo.de(procede ? 'error' : 'ok');
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Marca.radio),
+        side: BorderSide(color: procede ? e.color.withValues(alpha: .45) : tonos.borde, width: procede ? 1.5 : 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Icon(procede ? Icons.gavel_rounded : Icons.verified_rounded, color: e.texto(context), size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(procede ? 'Resumen para la reclamación' : 'No hace falta reclamar',
+                  style: t.textTheme.titleMedium),
             ),
-          ),
-        if (procede) ...[
-          const SizedBox(height: 12),
-          _Dato(Icons.person_outline, 'A quién', r['a_quien']),
-          _Dato(Icons.schedule, 'Plazo', r['plazo']),
-          if ((r['pasos'] as List).isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text('Si no te lo corrigen', style: t.textTheme.titleSmall),
-            for (final (i, paso) in (r['pasos'] as List).indexed)
-              Padding(padding: const EdgeInsets.symmetric(vertical: 3), child: Text('${i + 1}. $paso')),
+          ]),
+          if (procede && r['total_reclamado'] != null) ...[
+            const Hueco(14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: e.fondo(context), borderRadius: BorderRadius.circular(12)),
+              child: Row(children: [
+                Expanded(child: Text('Total a reclamar este mes', style: TextStyle(color: e.texto(context)))),
+                Text(eur(r['total_reclamado']),
+                    style: t.textTheme.titleLarge?.copyWith(color: e.texto(context), fontWeight: FontWeight.w800)),
+              ]),
+            ),
           ],
-        ],
-        if (r['texto'] != null) ...[
-          const SizedBox(height: 12),
-          Text('Mensaje para enviar', style: t.textTheme.titleSmall),
-          const SizedBox(height: 6),
-          _Borrador(r['texto']),
-        ],
-      ],
+          const Hueco(12),
+          Text(r['resumen'], style: t.textTheme.bodyMedium),
+          if (procede) ...[
+            for (final p in r['puntos'])
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(border: Border.all(color: tonos.borde), borderRadius: BorderRadius.circular(12)),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(p['concepto'], style: t.textTheme.titleSmall),
+                      const SizedBox(height: 2),
+                      Text(p['motivo'], style: t.textTheme.bodySmall?.copyWith(color: tonos.suave, height: 1.4)),
+                    ]),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(eur(p['importe']), style: t.textTheme.titleSmall),
+                ]),
+              ),
+            const Hueco(16),
+            _Dato(Icons.person_outline_rounded, 'A quién dirigirte', r['a_quien']),
+            _Dato(Icons.event_outlined, 'Plazo', r['plazo']),
+            if ((r['pasos'] as List).isNotEmpty) ...[
+              const Hueco(8),
+              Text('Si no te lo corrigen', style: t.textTheme.titleSmall),
+              const Hueco(6),
+              for (final (i, paso) in (r['pasos'] as List).indexed)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: tonos.tenue, shape: BoxShape.circle),
+                      child: Text('${i + 1}', style: t.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(paso)),
+                  ]),
+                ),
+            ],
+          ],
+          if (r['texto'] != null) ...[
+            const Hueco(16),
+            Text('Mensaje para enviar a tu empresa', style: t.textTheme.titleSmall),
+            const Hueco(8),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: tonos.tenue, borderRadius: BorderRadius.circular(12)),
+              child: SelectableText(r['texto'], style: t.textTheme.bodyMedium),
+            ),
+            const Hueco(10),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              label: const Text('Copiar mensaje'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: r['texto']));
+                aviso(context, 'Mensaje copiado. Pégalo en un email a tu empresa.');
+              },
+            ),
+          ],
+        ]),
+      ),
     );
   }
 }
@@ -381,100 +445,112 @@ class _Dato extends StatelessWidget {
   final String titulo, texto;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icono, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: '$titulo: ',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                TextSpan(text: texto),
-              ],
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _Borrador extends StatelessWidget {
-  const _Borrador(this.texto);
-  final String texto;
-
-  @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: t.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: SelectableText(texto),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icono, size: 20, color: t.colorScheme.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(titulo, style: t.textTheme.labelLarge),
+            Text(texto, style: t.textTheme.bodyMedium?.copyWith(color: Tonos.de(context).suave)),
+          ]),
         ),
-        const SizedBox(height: 6),
-        TextButton.icon(
-          icon: const Icon(Icons.copy, size: 18),
-          label: const Text('Copiar texto'),
-          onPressed: () {
-            Clipboard.setData(ClipboardData(text: texto));
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copiado')));
-          },
-        ),
-      ],
+      ]),
     );
   }
 }
 
-class _MejorarPro extends StatelessWidget {
-  const _MejorarPro({required this.onPressed, required this.cargando});
-  final VoidCallback? onPressed;
-  final bool cargando;
+class _Mejorar extends StatelessWidget {
+  const _Mejorar(this.archivo);
+  final Archivo? archivo;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: morado.withValues(alpha: .6)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '¿Quieres la revisión completa?',
-          style: TextStyle(fontWeight: FontWeight.w700, color: morado),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Con Pro recalculamos cada cotización y el IRPF, te explicamos cada línea, te damos las '
-          'un resumen para la reclamación si hay errores y preguntas ilimitadas a Nora.',
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: morado,
-            side: const BorderSide(color: morado),
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(gradient: Marca.degradadoPro, borderRadius: BorderRadius.circular(20)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const InsigniaPro(texto: 'REVISIÓN COMPLETA'),
+        const Hueco(12),
+        Text('¿Quieres saber cuánto puedes reclamar?',
+            style: t.textTheme.titleLarge?.copyWith(color: Colors.white)),
+        const Hueco(10),
+        for (final v in const [
+          'Recalculamos cada cotización y el IRPF',
+          'Resumen para la reclamación con el mensaje listo para enviar',
+          'Preguntas ilimitadas a Nora e informe en PDF',
+        ])
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.check_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text(v, style: TextStyle(color: Colors.white.withValues(alpha: .92)))),
+            ]),
           ),
-          onPressed: onPressed,
-          child: cargando
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Revisar esta nómina con Pro'),
+        const Hueco(12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Marca.pro),
+            onPressed: () {
+              if (archivo != null) {
+                Navigator.of(context)
+                    .pushReplacement(MaterialPageRoute(builder: (_) => PantallaPlan(archivo!, plan: 'pro')));
+              } else {
+                empezarRevision(context);
+              }
+            },
+            child: Text(archivo != null ? 'Revisar esta nómina a fondo' : 'Hacer una revisión completa'),
+          ),
         ),
-      ],
-    ),
-  );
+      ]),
+    );
+  }
+}
+
+class _BarraAcciones extends StatelessWidget {
+  const _BarraAcciones(this.r);
+  final Revision r;
+
+  @override
+  Widget build(BuildContext context) {
+    final tonos = Tonos.de(context);
+    return Container(
+      decoration: BoxDecoration(color: tonos.tarjeta, border: Border(top: BorderSide(color: tonos.borde))),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Centrado(
+            child: Row(children: [
+              Expanded(
+                child: FilledButton.icon(
+                  style: r.pro ? FilledButton.styleFrom(backgroundColor: Marca.pro) : null,
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
+                  label: const Text('Preguntar a Nora'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaChat(r))),
+                ),
+              ),
+              if (r.pro) ...[
+                const SizedBox(width: 10),
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16)),
+                    onPressed: () => imprimirInforme(r),
+                    child: const Row(children: [Icon(Icons.picture_as_pdf_outlined, size: 20), SizedBox(width: 6), Text('PDF')]),
+                  ),
+                ),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 }

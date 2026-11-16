@@ -1,279 +1,194 @@
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../api.dart';
 import '../compras.dart';
-import '../config.dart';
-import '../main.dart';
+import '../estado.dart';
+import '../tema.dart';
 import '../widgets.dart';
-import 'informe.dart';
-import 'tienda.dart';
+import 'nueva_revision.dart';
 
-class PantallaInicio extends StatefulWidget {
+class PantallaInicio extends StatelessWidget {
   const PantallaInicio({super.key});
-
-  @override
-  State<PantallaInicio> createState() => _PantallaInicioState();
-}
-
-class _PantallaInicioState extends State<PantallaInicio> {
-  String plan = 'free';
-  Uint8List? datos;
-  String? nombre;
-  bool analizando = false;
-
-  bool get camara => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-
-  Future<void> elegirArchivo() async {
-    final f = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
-    );
-    if (f == null) return;
-    final b = await f.xFile.readAsBytes();
-    setState(() {
-      datos = b;
-      nombre = f.name;
-    });
-  }
-
-  Future<void> hacerFoto() async {
-    final f = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 85, maxWidth: 2400);
-    if (f == null) return;
-    final b = await f.readAsBytes();
-    setState(() {
-      datos = b;
-      nombre = 'foto_nomina.jpg';
-    });
-  }
-
-  Future<void> analizar() async {
-    final tienda = Tienda.yo;
-    if (plan == 'pro' && !(tienda.cuenta?.puedePro ?? false)) {
-      await abrirTienda();
-      if (!(Tienda.yo.cuenta?.puedePro ?? false)) return;
-    }
-    setState(() => analizando = true);
-    try {
-      final r = await Api.yo.analizar(datos!, nombre!, plan);
-      await tienda.refrescarCuenta();
-      if (!mounted) return;
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaInforme(r, datos: datos!, nombre: nombre!)));
-    } on ErrorApi catch (e) {
-      if (!mounted) return;
-      if (e.sinSaldo && plan == 'pro') {
-        await abrirTienda();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
-      }
-    } finally {
-      if (mounted) setState(() => analizando = false);
-    }
-  }
-
-  Future<void> abrirTienda() =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PantallaTienda()));
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    final pro = plan == 'pro';
-    final acento = pro ? morado : azul;
-    if (analizando) return const _Cargando();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Revisor de nóminas'),
-        actions: [
-          IconButton(tooltip: 'Comprar Pro', icon: const Icon(Icons.workspace_premium_outlined), onPressed: abrirTienda),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Centrado(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('¿Tu nómina está bien?', style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 6),
-              Text(
-                'Sube tu nómina o hazle una foto. Nora, nuestra asesora con IA, la revisa concepto '
-                'por concepto y te explica qué está bien y qué no.',
-                style: t.textTheme.bodyLarge?.copyWith(color: t.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 16),
-              const _Saldo(),
-              const SizedBox(height: 16),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'free', label: Text('Free'), icon: Icon(Icons.description_outlined)),
-                  ButtonSegment(value: 'pro', label: Text('Pro'), icon: Icon(Icons.workspace_premium_outlined)),
-                ],
-                selected: {plan},
-                onSelectionChanged: (s) => setState(() => plan = s.first),
-              ),
-              const SizedBox(height: 12),
-              _Ventajas(pro: pro),
-              const SizedBox(height: 16),
-              _ZonaArchivo(nombre: nombre, onElegir: elegirArchivo, onFoto: camara ? hacerFoto : null),
-              const SizedBox(height: 16),
-              FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: acento, padding: const EdgeInsets.all(16)),
-                onPressed: datos == null ? null : analizar,
-                child: Text(pro ? 'Revisión completa (Pro)' : 'Revisar nómina gratis'),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Tu nómina se envía al servidor sólo para analizarla y no se guarda. '
-                'Este informe es orientativo y no sustituye el asesoramiento de un profesional.',
-                style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
-                textAlign: TextAlign.center,
+    final tonos = Tonos.de(context);
+    return SafeArea(
+      child: Pagina(children: [
+        const Hueco(8),
+        Row(children: [
+          // En pantallas anchas el logo ya está en la barra lateral.
+          if (MediaQuery.sizeOf(context).width < 840) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset('assets/icono/icono.png', width: 36, height: 36),
+            ),
+            const SizedBox(width: 10),
+          ],
+          Expanded(child: Text('Revisor de nóminas', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+          const _ChipSaldo(),
+        ]),
+        const Hueco(20),
+        const _Portada(),
+        const Hueco(24),
+        Text('Cómo funciona', style: t.textTheme.titleMedium),
+        const Hueco(12),
+        const _Paso(1, Icons.upload_file_rounded, 'Sube tu nómina', 'En PDF o con una foto desde el móvil.'),
+        const _Paso(2, Icons.fact_check_outlined, 'La revisamos línea a línea',
+            'Nora, nuestra asesora con IA, comprueba cada concepto y rehacemos las cuentas.'),
+        const _Paso(3, Icons.task_alt_rounded, 'Recibe tu informe',
+            'Lo que está bien, lo que falla y qué hacer. Y si hay dudas, pregúntale a Nora.', ultimo: true),
+        const Hueco(24),
+        Text('Qué comprobamos', style: t.textTheme.titleMedium),
+        const Hueco(12),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final (ic, txt) in const [
+            (Icons.payments_outlined, 'Salario y pluses'),
+            (Icons.shield_outlined, 'Seguridad Social'),
+            (Icons.account_balance_outlined, 'Retención de IRPF'),
+            (Icons.card_giftcard_outlined, 'Pagas extra'),
+            (Icons.more_time_rounded, 'Horas extra'),
+            (Icons.calculate_outlined, 'Sumas y líquido'),
+          ])
+            Chip(
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              avatar: Icon(ic, size: 18, color: t.colorScheme.primary),
+              label: Text(txt),
+            ),
+        ]),
+        const Hueco(24),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.lock_outline_rounded, color: tonos.suave),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Tu nómina se envía cifrada sólo para analizarla y no se guarda. '
+                  'El informe es orientativo y no sustituye a un asesor laboral.',
+                  style: t.textTheme.bodySmall?.copyWith(color: tonos.suave, height: 1.45),
+                ),
               ),
             ]),
           ),
         ),
-      ),
+      ]),
     );
   }
 }
 
-class _Saldo extends StatelessWidget {
-  const _Saldo();
+class _Portada extends StatelessWidget {
+  const _Portada();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      decoration: BoxDecoration(gradient: Marca.degradado, borderRadius: BorderRadius.circular(20)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('¿Tu nómina está bien?',
+            style: t.textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+        const Hueco(8),
+        Text(
+          'Descubre en un minuto si te pagan lo que te corresponde y qué hacer si hay un error.',
+          style: t.textTheme.bodyLarge?.copyWith(color: Colors.white.withValues(alpha: .88)),
+        ),
+        const Hueco(20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Marca.azul),
+            onPressed: () => empezarRevision(context),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Revisar mi nómina'),
+          ),
+        ),
+        const Hueco(12),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          for (final (i, txt) in const ['Gratis', 'Sin registro', 'Resultado al momento'].indexed) ...[
+            if (i > 0) Text('  ·  ', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+            Text(txt, style: t.textTheme.bodySmall?.copyWith(color: Colors.white.withValues(alpha: .85))),
+          ],
+        ]),
+      ]),
+    );
+  }
+}
+
+class _Paso extends StatelessWidget {
+  const _Paso(this.n, this.icono, this.titulo, this.texto, {this.ultimo = false});
+  final int n;
+  final IconData icono;
+  final String titulo, texto;
+  final bool ultimo;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final tonos = Tonos.de(context);
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Column(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: t.colorScheme.primary.withValues(alpha: .1), shape: BoxShape.circle),
+            child: Icon(icono, size: 20, color: t.colorScheme.primary),
+          ),
+          if (!ultimo) Expanded(child: Container(width: 2, color: tonos.borde)),
+        ]),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(top: 2, bottom: ultimo ? 0 : 18),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(titulo, style: t.textTheme.titleSmall),
+              const SizedBox(height: 2),
+              Text(texto, style: t.textTheme.bodyMedium?.copyWith(color: tonos.suave)),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+/// Saldo arriba a la derecha: "Pro · 2" o "Free". Lleva a Mi cuenta.
+class _ChipSaldo extends StatelessWidget {
+  const _ChipSaldo();
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: Tienda.yo,
         builder: (context, _) {
           final c = Tienda.yo.cuenta;
-          if (c == null) {
-            final err = Tienda.yo.error;
-            return err == null
-                ? const SizedBox.shrink()
-                : Card(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    child: ListTile(
-                      leading: const Icon(Icons.cloud_off),
-                      title: Text(err),
-                      trailing: IconButton(icon: const Icon(Icons.refresh), onPressed: Tienda.yo.refrescarCuenta),
-                    ),
-                  );
-          }
-          final textos = <String>[
-            if (c.suscripcion) 'Pro mensual activo · ${c.mensualRestantes} revisiones este mes',
-            if (c.creditos > 0) '${c.creditos} revisión${c.creditos == 1 ? '' : 'es'} Pro',
-            '${c.freeHoy} revisiones gratis hoy',
-          ];
-          return Card(
-            child: ListTile(
-              leading: Icon(c.puedePro ? Icons.workspace_premium : Icons.account_balance_wallet_outlined,
-                  color: c.puedePro ? morado : null),
-              title: Text(textos.first),
-              subtitle: textos.length > 1 ? Text(textos.skip(1).join(' · ')) : null,
+          if (c == null) return const SizedBox.shrink();
+          final pro = c.puedePro;
+          final morado = Theme.of(context).brightness == Brightness.dark ? Marca.proClaro : Marca.pro;
+          return InkWell(
+            borderRadius: BorderRadius.circular(99),
+            onTap: () => pestana.value = 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: pro ? Marca.degradadoPro : null,
+                color: pro ? null : Tonos.de(context).tenue,
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(pro ? Icons.workspace_premium_rounded : Icons.workspace_premium_outlined,
+                    size: 16, color: pro ? Colors.white : morado),
+                const SizedBox(width: 6),
+                Text(
+                  pro ? (c.suscripcion ? 'Pro mensual' : 'Pro · ${c.creditos}') : 'Hazte Pro',
+                  style: TextStyle(
+                      color: pro ? Colors.white : morado, fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ]),
             ),
           );
         },
-      );
-}
-
-class _Ventajas extends StatelessWidget {
-  const _Ventajas({required this.pro});
-  final bool pro;
-
-  static const free = [
-    'Veredicto y resumen sencillo',
-    'Los 5 puntos más importantes',
-    'Comprobación de sumas y líquido',
-    '1 pregunta a Nora',
-  ];
-  static const pros = [
-    'Revisión completa concepto a concepto',
-    'Recalcula Seguridad Social e IRPF',
-    'Explicación de cada línea de la nómina',
-    'Resumen para la reclamación, listo para enviar',
-    'Preguntas ilimitadas a Nora',
-    'Informe en PDF',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final color = pro ? morado : azul;
-    return Card(
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12), side: BorderSide(color: color.withValues(alpha: .5), width: 1.5)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          for (final v in pro ? pros : free)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(children: [
-                Icon(Icons.check_circle, size: 18, color: color),
-                const SizedBox(width: 8),
-                Expanded(child: Text(v)),
-              ]),
-            ),
-          if (pro)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text('$precioRevision por revisión o $precioMensual',
-                  style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-            ),
-        ]),
-      ),
-    );
-  }
-}
-
-class _ZonaArchivo extends StatelessWidget {
-  const _ZonaArchivo({required this.nombre, required this.onElegir, this.onFoto});
-  final String? nombre;
-  final VoidCallback onElegir;
-  final VoidCallback? onFoto;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onElegir,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: t.colorScheme.outlineVariant, width: 2),
-          ),
-          child: Column(children: [
-            Icon(nombre == null ? Icons.upload_file : Icons.description, size: 36, color: t.colorScheme.primary),
-            const SizedBox(height: 8),
-            Text(nombre ?? 'Elige tu nómina (PDF o imagen)', textAlign: TextAlign.center, style: t.textTheme.titleSmall),
-            if (nombre != null)
-              Text('Toca para cambiarla', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-          ]),
-        ),
-      ),
-      if (onFoto != null) ...[
-        const SizedBox(height: 8),
-        OutlinedButton.icon(onPressed: onFoto, icon: const Icon(Icons.photo_camera_outlined), label: const Text('Hacer una foto')),
-      ],
-    ]);
-  }
-}
-
-class _Cargando extends StatelessWidget {
-  const _Cargando();
-
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-        body: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Nora está revisando tu nómina…'),
-            SizedBox(height: 4),
-            Text('Puede tardar hasta un minuto', style: TextStyle(fontSize: 12)),
-          ]),
-        ),
       );
 }

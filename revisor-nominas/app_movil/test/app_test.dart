@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:revisor_nominas/tema.dart';
 import 'package:revisor_nominas/widgets.dart';
 
 void main() {
@@ -12,13 +13,14 @@ void main() {
   });
 
   testWidgets('punto del informe muestra estado y qué hacer', (t) async {
-    await t.pumpWidget(const MaterialApp(
-      home: Scaffold(
+    await t.pumpWidget(MaterialApp(
+      theme: construirTema(Brightness.light),
+      home: const Scaffold(
         body: PuntoInforme({'concepto': 'MEI', 'estado': 'error', 'explicacion': 'Tipo antiguo', 'que_hacer': 'Avisa a RRHH'}),
       ),
     ));
-    expect(find.text('ERROR'), findsOneWidget);
+    expect(find.byIcon(Icons.cancel_rounded), findsOneWidget);
     expect(find.text('MEI'), findsOneWidget);
-    expect(find.text('👉 Avisa a RRHH'), findsOneWidget);
+    expect(find.text('Avisa a RRHH'), findsOneWidget);
   });
 }
