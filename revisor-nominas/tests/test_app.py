@@ -93,6 +93,20 @@ def test_pro_sin_saldo():
     assert analizar("pro").status_code == 402
 
 
+def test_pro_chat_ilimitado():
+    comprar("revision_pro", "prueba-chat")
+    rid = analizar("pro").json()["id"]
+    h = [{"role": "user", "content": "q"}]
+    for _ in range(5):
+        assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 200
+
+
+def test_pro_resumen_reclamacion():
+    comprar("revision_pro", "prueba-rec")
+    r = analizar("pro").json()["informe"]["reclamacion"]
+    assert r["procede"] and r["total_reclamado"] == 0.49 and r["texto"]
+
+
 def test_revision_pro_consume_credito():
     assert comprar("revision_pro", "prueba-1").json()["creditos"] == 1
     j = analizar("pro").json()
@@ -146,8 +160,7 @@ def test_codigo_canje():
 def test_limite_chat_free():
     rid = analizar("free").json()["id"]
     h = [{"role": "user", "content": "q"}]
-    for _ in range(3):
-        assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 200
+    assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 200
     assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 402
 
 

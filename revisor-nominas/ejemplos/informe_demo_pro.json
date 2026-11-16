@@ -16,7 +16,7 @@
    "importe_nomina": 3.19,
    "importe_esperado": 3.68,
    "explicacion": "Se aplica 0,13 % cuando en 2026 corresponde 0,15 % al trabajador.",
-   "que_hacer": "Avisa a la gestoría para que actualice el tipo; la Seguridad Social puede regularizarlo."
+   "que_hacer": "Inclúyelo en la reclamación: avisa a la gestoría para que actualice el tipo."
   },
   {
    "concepto": "IRPF",
@@ -71,7 +71,6 @@
   "¿Podéis actualizar el tipo del MEI al 0,15 % vigente en 2026?",
   "¿Qué datos del modelo 145 tenéis registrados para calcular mi IRPF?"
  ],
- "borrador_reclamacion": "Hola:\n\nRevisando mi nómina de octubre de 2026 he visto que el MEI se descuenta al 0,13 %, cuando el tipo del trabajador para 2026 es el 0,15 %. ¿Podéis revisarlo y corregirlo en las próximas nóminas?\n\nGracias,\nLaura",
  "confianza": "alta",
  "limitaciones": "No he podido comprobar el salario mínimo de convenio ni tu situación personal para el IRPF.",
  "datos": {
@@ -139,5 +138,25 @@
   "base_cp": 2450.0,
   "base_irpf": 2450.0,
   "pct_irpf": 12.0
+ },
+ "reclamacion": {
+  "procede": true,
+  "resumen": "En tu nómina de octubre se aplica el MEI con el tipo de 2025 (0,13 %) en lugar del de 2026 (0,15 %). Es un error de la empresa en tu contra a futuro: la Seguridad Social puede regularizarlo y descontarte la diferencia más adelante. Pide que se corrija desde la próxima nómina.",
+  "puntos": [
+   {
+    "concepto": "MEI (Mecanismo de Equidad Intergeneracional)",
+    "motivo": "Se aplica 0,13 % sobre 2.450,00 € cuando el tipo de 2026 es 0,15 %.",
+    "importe": 0.49
+   }
+  ],
+  "total_reclamado": 0.49,
+  "a_quien": "Departamento de RRHH o la gestoría que hace las nóminas.",
+  "plazo": "Tienes 1 año desde que se pagó la nómina para reclamar cantidades (art. 59 del Estatuto de los Trabajadores).",
+  "pasos": [
+   "Envía el mensaje por escrito (email) y guarda copia.",
+   "Si no te contestan en 15 días, habla con los representantes de los trabajadores.",
+   "Si sigue sin corregirse, puedes presentar papeleta de conciliación o denuncia en la Inspección de Trabajo."
+  ],
+  "texto": "Hola:\n\nRevisando mi nómina de octubre de 2026 he visto que el MEI se descuenta al 0,13 %, cuando el tipo del trabajador para 2026 es el 0,15 %. ¿Podéis revisarlo y corregirlo en las próximas nóminas?\n\nGracias,\nLaura"
  }
 }

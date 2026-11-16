@@ -46,7 +46,7 @@ del recibo (Orden ESS/2098/2014).
 calcular), explicación y qué hacer.
 - explicacion_conceptos: explica en lenguaje llano qué significa cada línea de la nómina.
 - recomendaciones y preguntas_para_rrhh: concretas y accionables.
-- borrador_reclamacion: si hay errores, un texto breve y educado para enviar a la empresa; si no, null.
+- reclamacion: el RESUMEN PARA LA RECLAMACIÓN. Si hay errores a favor del trabajador o cosas que pedir que se corrijan: procede=true; resumen claro de qué está mal y qué se pide; un punto por cada error con motivo e importe (lo cobrado de menos o descontado de más ese mes; null si no se puede calcular); total_reclamado (suma de los importes, null si ninguno); a quién dirigirse; plazo orientativo (las cantidades salariales prescriben al año, art. 59 ET); pasos si la empresa no lo corrige (representantes, papeleta de conciliación, Inspección de Trabajo); y texto: un mensaje breve y educado listo para enviar, en primera persona y con los importes. Si no hay nada que reclamar: procede=false, puntos vacío, total_reclamado null, texto null y explica en resumen que no hace falta reclamar.
 - confianza y limitaciones: qué no has podido comprobar y por qué.
 - datos: extrae los importes tal cual aparecen (null si falta). Clasifica cada deducción con su tipo."""
 

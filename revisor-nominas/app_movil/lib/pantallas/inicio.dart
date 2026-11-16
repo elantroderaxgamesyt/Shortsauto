@@ -184,14 +184,15 @@ class _Ventajas extends StatelessWidget {
     'Veredicto y resumen sencillo',
     'Los 5 puntos más importantes',
     'Comprobación de sumas y líquido',
-    '3 preguntas a Nora',
+    '1 pregunta a Nora',
   ];
   static const pros = [
     'Revisión completa concepto a concepto',
     'Recalcula Seguridad Social e IRPF',
     'Explicación de cada línea de la nómina',
-    'Preguntas para RRHH y borrador de reclamación',
-    'Chat ilimitado e informe en PDF',
+    'Resumen para la reclamación, listo para enviar',
+    'Preguntas ilimitadas a Nora',
+    'Informe en PDF',
   ];
 
   @override

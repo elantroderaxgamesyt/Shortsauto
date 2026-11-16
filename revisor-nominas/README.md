@@ -27,8 +27,9 @@ Una sola app gratuita; Pro se desbloquea con compra dentro de la app.
 | Informe | Veredicto, resumen y 5 puntos | Revisión concepto a concepto |
 | Cálculos que rehace la app | Sumas y líquido | + cada cotización a la SS e IRPF |
 | Explicación de cada línea | — | ✅ |
-| Preguntas para RRHH y borrador de reclamación | — | ✅ |
-| Chat con Nora | 3 preguntas | Ilimitado |
+| Resumen para la reclamación (qué, cuánto, a quién, plazo y mensaje listo para enviar) | — | ✅ |
+| Preguntas para RRHH | — | ✅ |
+| Preguntas a Nora | 1 | Ilimitadas |
 | Informe en PDF | — | ✅ |
 
 - Android: pago con Google Play (`revision_pro` consumible, `pro_mensual` suscripción).

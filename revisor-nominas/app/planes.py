@@ -15,7 +15,7 @@ class Plan:
 
 
 PLANES = {
-    "free": Plan("free", esfuerzo="low", max_puntos=5, preguntas_chat=3, comprobaciones="basicas"),
+    "free": Plan("free", esfuerzo="low", max_puntos=5, preguntas_chat=1, comprobaciones="basicas"),
     "pro": Plan("pro", esfuerzo="high", max_puntos=0, preguntas_chat=0, comprobaciones="completas"),
 }
 

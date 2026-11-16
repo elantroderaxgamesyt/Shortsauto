@@ -71,12 +71,33 @@ Future<void> imprimirInforme(Revision r) async {
       ...[for (final x in inf['recomendaciones']) pw.Bullet(text: x)],
       titulo('Preguntas para RRHH o la gestoría'),
       ...[for (final x in inf['preguntas_para_rrhh']) pw.Bullet(text: x)],
-      if (inf['borrador_reclamacion'] != null) ...[
-        titulo('Borrador de reclamación'),
+      titulo('Resumen para la reclamación'),
+      pw.Text(inf['reclamacion']['resumen']),
+      if (inf['reclamacion']['procede'] == true) ...[
+        pw.SizedBox(height: 6),
+        pw.TableHelper.fromTextArray(
+          headers: ['Concepto', 'Motivo', 'Importe'],
+          data: [
+            for (final p in inf['reclamacion']['puntos']) [p['concepto'], p['motivo'], eur(p['importe'])],
+            ['Total a reclamar', '', eur(inf['reclamacion']['total_reclamado'])],
+          ],
+          cellStyle: const pw.TextStyle(fontSize: 9),
+          headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+          columnWidths: {0: const pw.FlexColumnWidth(3), 1: const pw.FlexColumnWidth(5), 2: const pw.FlexColumnWidth(2)},
+          cellAlignments: {2: pw.Alignment.centerRight},
+        ),
+        pw.SizedBox(height: 6),
+        pw.Text('A quién: ${inf['reclamacion']['a_quien']}'),
+        pw.Text('Plazo: ${inf['reclamacion']['plazo']}'),
+        ...[for (final x in inf['reclamacion']['pasos']) pw.Bullet(text: x)],
+      ],
+      if (inf['reclamacion']['texto'] != null) ...[
+        pw.SizedBox(height: 6),
+        pw.Text('Mensaje para enviar', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
         pw.Container(
           padding: const pw.EdgeInsets.all(10),
           color: PdfColors.grey100,
-          child: pw.Text(inf['borrador_reclamacion']),
+          child: pw.Text(inf['reclamacion']['texto']),
         ),
       ],
       pw.SizedBox(height: 12),

@@ -75,6 +75,24 @@ class Comprobacion(BaseModel):
     que_hacer: str
 
 
+class PuntoReclamacion(BaseModel):
+    concepto: str
+    motivo: str
+    importe: Optional[float]   # lo que se ha cobrado de menos (o descontado de más) este mes
+
+
+class Reclamacion(BaseModel):
+    """Resumen listo para reclamar a la empresa (sólo Pro)."""
+    procede: bool              # ¿hay algo que reclamar?
+    resumen: str               # 2-4 frases: qué está mal y qué se pide
+    puntos: List[PuntoReclamacion]
+    total_reclamado: Optional[float]
+    a_quien: str               # RRHH, gestoría, representantes, etc.
+    plazo: str                 # plazo orientativo para reclamar
+    pasos: List[str]           # qué hacer si la empresa no lo corrige
+    texto: Optional[str]       # mensaje para enviar a la empresa
+
+
 class InformePro(BaseModel):
     veredicto: Veredicto
     resumen: str
@@ -82,7 +100,7 @@ class InformePro(BaseModel):
     explicacion_conceptos: List[Punto]
     recomendaciones: List[str]
     preguntas_para_rrhh: List[str]
-    borrador_reclamacion: Optional[str]
+    reclamacion: Reclamacion
     confianza: Literal["alta", "media", "baja"]
     limitaciones: str
     datos: DatosNomina

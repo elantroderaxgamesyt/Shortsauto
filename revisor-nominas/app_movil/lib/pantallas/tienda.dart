@@ -58,7 +58,7 @@ class _PantallaTiendaState extends State<PantallaTienda> {
                 Text('La revisión completa de tu nómina', style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
                 const Text('Recalculamos cada cotización y el IRPF, te explicamos cada línea, preparamos las '
-                    'preguntas para RRHH y un borrador de reclamación, con chat ilimitado con Nora e informe en PDF.'),
+                    'un resumen para la reclamación listo para enviar, con preguntas ilimitadas a Nora e informe en PDF.'),
                 const SizedBox(height: 16),
                 if (c != null && (c.creditos > 0 || c.suscripcion))
                   Card(

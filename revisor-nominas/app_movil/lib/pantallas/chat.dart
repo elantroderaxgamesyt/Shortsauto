@@ -70,7 +70,9 @@ class _PantallaChatState extends State<PantallaChat> {
                 preferredSize: const Size.fromHeight(24),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text('Versión gratuita: te quedan ${max - usadas} de $max preguntas',
+                  child: Text(max == 1
+                      ? 'Versión gratuita: ${usadas == 0 ? 'tienes 1 pregunta' : 'ya has usado tu pregunta'}. En Pro son ilimitadas.'
+                      : 'Versión gratuita: te quedan ${max - usadas} de $max preguntas',
                       style: t.textTheme.bodySmall),
                 ),
               )
