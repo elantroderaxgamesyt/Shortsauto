@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -7,10 +9,18 @@ import 'pantallas/raiz.dart';
 import 'tema.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Api.iniciar();
-  Tienda.yo.iniciar();
-  runApp(const RevisorNominas());
+  // Ningún fallo al arrancar debe dejar la app colgada en la pantalla de carga:
+  // se registra y la app sigue.
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    FlutterError.onError = (d) {
+      FlutterError.presentError(d);
+      debugPrint('Error de Flutter: ${d.exceptionAsString()}');
+    };
+    await Api.iniciar();
+    runApp(const RevisorNominas());
+    unawaited(Tienda.yo.iniciar().catchError((Object e) => debugPrint('Tienda: $e')));
+  }, (e, pila) => debugPrint('Error sin capturar: $e\n$pila'));
 }
 
 class RevisorNominas extends StatelessWidget {

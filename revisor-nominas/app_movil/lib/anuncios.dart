@@ -32,6 +32,15 @@ class Anuncios extends ChangeNotifier {
 
   Future<void> iniciar() async {
     if (!disponibles) return;
+    try {
+      await _iniciar();
+    } catch (e) {
+      // Los anuncios nunca deben impedir usar la app.
+      debugPrint('Anuncios desactivados: $e');
+    }
+  }
+
+  Future<void> _iniciar() async {
     Tienda.yo.addListener(notifyListeners); // si compra Pro, los banners desaparecen al momento
 
     // 1) Consentimiento (RGPD). Si falla, seguimos con lo que diga canRequestAds.

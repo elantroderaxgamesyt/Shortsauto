@@ -71,6 +71,28 @@ jobs:
           path: |
             revisor-nominas/app_movil/build/app/outputs/flutter-apk/app-release.apk
             revisor-nominas/app_movil/build/app/outputs/bundle/release/app-release.aab
+      # Prueba real: instala la APK en un emulador, la abre y comprueba que no se cierra.
+      - name: Activar KVM para el emulador
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Prueba de arranque en Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          working-directory: revisor-nominas/app_movil
+          script: bash tool/prueba_arranque_android.sh build/app/outputs/flutter-apk/app-release.apk
+      - name: Guardar resultado de la prueba
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prueba-arranque-android
+          path: revisor-nominas/app_movil/prueba-arranque/
+          if-no-files-found: ignore
 
   windows:
     runs-on: windows-latest
@@ -81,6 +103,39 @@ jobs:
         with: { flutter-version: "${{ env.FLUTTER_VERSION }}", channel: stable, cache: true }
       - run: flutter pub get
       - run: flutter build windows --release --build-number=${{ github.run_number }} --dart-define=API_URL=${{ env.API_URL }}
+      # Sin estas librerías de Microsoft el .exe no abre en PCs que no tengan instalado
+      # el "Visual C++ Redistributable".
+      - name: Añadir librerías de Visual C++
+        shell: pwsh
+        run: |
+          foreach ($dll in 'msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll') {
+            Copy-Item "$env:WINDIR\System32\$dll" build\windows\x64\runner\Release\
+          }
+      - name: Prueba de arranque en Windows
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force prueba-arranque | Out-Null
+          $p = Start-Process build\windows\x64\runner\Release\revisor_nominas.exe -PassThru
+          Start-Sleep -Seconds 20
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $img = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          [System.Drawing.Graphics]::FromImage($img).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $img.Save("$PWD\prueba-arranque\pantalla.png")
+          if ($p.HasExited) {
+            Get-WinEvent -LogName Application -MaxEvents 15 | Format-List TimeCreated, ProviderName, Message
+            Write-Error "La app se ha cerrado al abrirla (código $($p.ExitCode))"
+            exit 1
+          }
+          Write-Host "La app sigue abierta"
+          Stop-Process -Id $p.Id
+      - name: Guardar resultado de la prueba
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prueba-arranque-windows
+          path: revisor-nominas/app_movil/prueba-arranque/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: revisor-nominas-windows

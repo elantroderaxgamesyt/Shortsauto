@@ -62,14 +62,20 @@ class Api {
   static Api get yo => _yo!;
 
   static Future<void> iniciar() async {
-    final prefs = await SharedPreferences.getInstance();
-    var id = prefs.getString('usuario');
-    if (id == null) {
-      final r = Random.secure();
-      id = List.generate(16, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
-      await prefs.setString('usuario', id);
+    final r = Random.secure();
+    String nuevo() => List.generate(16, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      var id = prefs.getString('usuario');
+      if (id == null) {
+        id = nuevo();
+        await prefs.setString('usuario', id);
+      }
+      _yo = Api._(id);
+    } catch (_) {
+      // Si el almacenamiento falla, la app funciona igual con un id de esta sesión.
+      _yo = Api._(nuevo());
     }
-    _yo = Api._(id);
   }
 
   Map<String, String> get _cab => {'X-Usuario': usuario};
