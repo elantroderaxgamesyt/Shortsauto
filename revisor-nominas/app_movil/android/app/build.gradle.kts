@@ -58,6 +58,7 @@ android {
         release {
             // Sin key.properties se firma con la clave de depuración (vale para probar, no para Play Store).
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
