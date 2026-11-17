@@ -10,6 +10,7 @@ dependencies:
   file_picker: ^13.3.3
   flutter:
     sdk: flutter
+  google_mobile_ads: ^9.2.0
   http: ^1.6.0
   http_parser: ^4.1.2
   image_picker: ^1.2.4

@@ -18,3 +18,12 @@ const productoRevision = 'revision_pro'; // 2,99 €
 const productoMensual = 'pro_mensual'; // 9,99 €/mes
 const precioRevision = '2,99 €';
 const precioMensual = '9,99 €/mes';
+
+/// Anuncios (Google AdMob): sólo en Android.
+bool get anunciosActivos => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+// Bloques de anuncios. Por defecto, los de PRUEBA de Google (no generan dinero
+// y se pueden pulsar sin riesgo). Los reales se pasan al compilar:
+//   --dart-define=ADMOB_BANNER=ca-app-pub-XXXX/YYYY --dart-define=ADMOB_APERTURA=ca-app-pub-XXXX/ZZZZ
+const admobBanner = String.fromEnvironment('ADMOB_BANNER', defaultValue: 'ca-app-pub-3940256099942544/9214589741');
+const admobApertura = String.fromEnvironment('ADMOB_APERTURA', defaultValue: 'ca-app-pub-3940256099942544/9257395921');

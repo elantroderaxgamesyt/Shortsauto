@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../anuncios.dart';
 import '../compras.dart';
 import '../tema.dart';
 import '../widgets.dart';
@@ -68,6 +69,15 @@ class PantallaCuenta extends StatelessWidget {
               _Enlace(Icons.help_outline_rounded, 'Cómo hacer una buena foto de la nómina', () => _info(context, 'Consejos para la foto', _consejos)),
               const Divider(),
               _Enlace(Icons.lock_outline_rounded, 'Privacidad', () => _info(context, 'Privacidad', _privacidad)),
+              ListenableBuilder(
+                listenable: Anuncios.yo,
+                builder: (context, _) => !Anuncios.yo.privacidadRequerida
+                    ? const SizedBox.shrink()
+                    : Column(children: [
+                        const Divider(),
+                        _Enlace(Icons.ads_click_rounded, 'Privacidad de los anuncios', Anuncios.yo.abrirPrivacidad),
+                      ]),
+              ),
               const Divider(),
               _Enlace(Icons.info_outline_rounded, 'Acerca de', () => _info(context, 'Revisor de nóminas', _acerca)),
             ]),
@@ -83,7 +93,9 @@ class PantallaCuenta extends StatelessWidget {
   static const _privacidad = 'Tu nómina se envía cifrada a nuestro servidor sólo para analizarla con IA y no se '
       'guarda. Guardamos el informe resultante para que puedas consultarlo y hacer preguntas, '
       'enmascarando datos como el DNI, el número de la Seguridad Social o la cuenta bancaria. '
-      'No pedimos registro: tu cuenta es un identificador anónimo de este dispositivo.';
+      'No pedimos registro: tu cuenta es un identificador anónimo de este dispositivo.\n\n'
+      'En la versión gratuita para Android mostramos anuncios de Google AdMob. Puedes elegir si son '
+      'personalizados al abrir la app o desde "Privacidad de los anuncios". Con Pro no hay anuncios.';
   static const _acerca = 'Revisor de nóminas con IA para nóminas españolas.\n\n'
       'El informe es orientativo y no sustituye el asesoramiento de un graduado social, sindicato o abogado laboralista.';
 

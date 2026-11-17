@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../anuncios.dart';
 import '../estado.dart';
 import '../tema.dart';
 import 'cuenta.dart';
@@ -7,8 +8,20 @@ import 'historial.dart';
 import 'inicio.dart';
 
 /// Navegación principal: barra inferior en móvil y barra lateral en Windows / tablet.
-class PantallaRaiz extends StatelessWidget {
+class PantallaRaiz extends StatefulWidget {
   const PantallaRaiz({super.key});
+
+  @override
+  State<PantallaRaiz> createState() => _PantallaRaizState();
+}
+
+class _PantallaRaizState extends State<PantallaRaiz> {
+  @override
+  void initState() {
+    super.initState();
+    // Consentimiento y anuncios cuando la primera pantalla ya está dibujada.
+    WidgetsBinding.instance.addPostFrameCallback((_) => Anuncios.yo.iniciar());
+  }
 
   static const _destinos = [
     (Icons.home_outlined, Icons.home_rounded, 'Inicio'),
@@ -25,14 +38,18 @@ class PantallaRaiz extends StatelessWidget {
           if (!ancho) {
             return Scaffold(
               body: cuerpo,
-              bottomNavigationBar: NavigationBar(
-                selectedIndex: i,
-                onDestinationSelected: (n) => pestana.value = n,
-                destinations: [
-                  for (final (ic, sel, txt) in _destinos)
-                    NavigationDestination(icon: Icon(ic), selectedIcon: Icon(sel), label: txt),
-                ],
-              ),
+              bottomNavigationBar: Column(mainAxisSize: MainAxisSize.min, children: [
+                // Banner sólo en Inicio y Mis revisiones (y sólo para usuarios Free).
+                if (i < 2) const BannerAnuncio(),
+                NavigationBar(
+                  selectedIndex: i,
+                  onDestinationSelected: (n) => pestana.value = n,
+                  destinations: [
+                    for (final (ic, sel, txt) in _destinos)
+                      NavigationDestination(icon: Icon(ic), selectedIcon: Icon(sel), label: txt),
+                  ],
+                ),
+              ]),
             );
           }
           return Scaffold(

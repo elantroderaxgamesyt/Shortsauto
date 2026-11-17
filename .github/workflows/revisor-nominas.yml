@@ -13,6 +13,10 @@ env:
   FLUTTER_VERSION: "3.50.0"
   # URL pública del servidor. Créala en Settings > Secrets and variables > Actions > Variables.
   API_URL: ${{ vars.NOMINAS_API_URL }}
+  # AdMob (opcional). Sin estas variables se usan los anuncios de PRUEBA de Google.
+  ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
+  ADMOB_BANNER: ${{ vars.ADMOB_BANNER }}
+  ADMOB_APERTURA: ${{ vars.ADMOB_APERTURA }}
 
 jobs:
   servidor:
@@ -56,6 +60,9 @@ jobs:
       - name: Compilar APK y AAB
         run: |
           V="--build-number=${{ github.run_number }} --dart-define=API_URL=$API_URL"
+          [ -n "$ADMOB_BANNER" ] && V="$V --dart-define=ADMOB_BANNER=$ADMOB_BANNER"
+          [ -n "$ADMOB_APERTURA" ] && V="$V --dart-define=ADMOB_APERTURA=$ADMOB_APERTURA"
+          [ -z "$ADMOB_APP_ID" ] && echo "::warning::Sin ADMOB_APP_ID: la app lleva anuncios de prueba."
           flutter build apk --release $V
           flutter build appbundle --release $V
       - uses: actions/upload-artifact@v4

@@ -171,12 +171,13 @@ class _PantallaPlanState extends State<PantallaPlan> {
                     nota: puedePro
                         ? (c!.suscripcion ? 'Con tu Pro mensual' : 'Tienes ${c.creditos} disponible${c.creditos == 1 ? '' : 's'}')
                         : 'o $precioMensual',
-                    ventajas: const [
+                    ventajas: [
                       'Revisión concepto a concepto',
                       'Recalcula Seguridad Social e IRPF',
                       'Resumen para la reclamación, listo para enviar',
                       'Preguntas ilimitadas a Nora',
                       'Informe en PDF',
+                      if (anunciosActivos) 'Sin anuncios',
                     ],
                   ),
                 ]),

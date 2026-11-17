@@ -81,12 +81,13 @@ class _ContenidoTiendaState extends State<ContenidoTienda> {
                 const Hueco(10),
                 Text('Revisión completa', style: t.textTheme.titleLarge?.copyWith(color: Colors.white)),
                 const Hueco(10),
-                for (final v in const [
+                for (final v in [
                   'Revisión concepto a concepto',
                   'Recalculamos Seguridad Social e IRPF',
                   'Resumen para la reclamación, listo para enviar',
                   'Preguntas ilimitadas a Nora',
                   'Informe en PDF',
+                  if (anunciosActivos) 'Sin anuncios',
                 ])
                   Padding(
                     padding: const EdgeInsets.only(bottom: 5),

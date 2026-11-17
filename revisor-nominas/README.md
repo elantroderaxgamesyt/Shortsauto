@@ -31,12 +31,17 @@ Una sola app gratuita; Pro se desbloquea con compra dentro de la app.
 | Preguntas para RRHH | — | ✅ |
 | Preguntas a Nora | 1 | Ilimitadas |
 | Informe en PDF | — | ✅ |
+| Anuncios (sólo Android) | Al abrir la app (máx. 1 cada 4 h) y banner en Inicio / Mis revisiones | Sin anuncios |
 
 - Android: pago con Google Play (`revision_pro` consumible, `pro_mensual` suscripción).
   El servidor verifica cada compra con Google antes de dar saldo.
 - Windows: de momento Pro se activa con **códigos de canje** (`python -m app.admin codigo --creditos 1`).
   Pendiente: pago en Windows (Microsoft Store o Stripe).
 - Una revisión Pro sólo se cobra si el análisis sale bien.
+
+Anuncios: Google AdMob (`app_movil/lib/anuncios.dart`). Antes de cargar ninguno se pide el
+consentimiento del RGPD con el formulario oficial de Google. Nunca salen en el informe ni la primera
+vez que se abre la app. Mientras no configures tu cuenta se usan los anuncios de **prueba** de Google.
 
 Límites y precios: `app/planes.py` (servidor) y `app_movil/lib/config.dart` (textos de la app;
 en Android el precio real lo pone Google Play).
@@ -79,6 +84,8 @@ Configuración en GitHub (*Settings → Secrets and variables → Actions*):
 | Variable | `NOMINAS_API_URL` | URL pública del servidor, p. ej. `https://api.tudominio.es`. **Sin ella la app no sabe dónde está el servidor.** |
 | Secreto | `ANDROID_KEYSTORE_BASE64` | Clave de subida a Play Store (`base64 -w0 upload.jks`) |
 | Secreto | `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Datos de esa clave |
+| Variable | `ADMOB_APP_ID` | Id de la app en AdMob (`ca-app-pub-…~…`) |
+| Variable | `ADMOB_BANNER`, `ADMOB_APERTURA` | Ids de los bloques de anuncios (`ca-app-pub-…/…`) |
 
 ## Servidor en producción
 
