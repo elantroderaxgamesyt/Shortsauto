@@ -11,9 +11,17 @@ import anthropic
 
 from .comprobaciones import REFERENCIA
 from .modelos import InformeFree, InformePro
-from .planes import MODELO, Plan
+from .planes import MODELO_CHAT, Plan
 
-BETAS = ["server-side-fallback-2026-07-01"]
+# Si el modelo rechaza una petición por sus filtros de seguridad, la API puede repetirla
+# con otro modelo. Haiku no tiene esta opción, así que sólo se envía a los que la admiten.
+_CON_RESPALDO = ("claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-2", "claude-fable-5-1")
+
+
+def _respaldo(modelo: str) -> dict:
+    if modelo in _CON_RESPALDO:
+        return {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+    return {}
 TIPOS_IMAGEN = {"image/png", "image/jpeg", "image/webp", "image/gif"}
 
 PERSONA = """Eres "Nora", asesora laboral especializada en nóminas españolas. Hablas en español \
@@ -89,10 +97,9 @@ def analizar(datos: bytes, media_type: str, plan: Plan) -> InformeFree | Informe
         esquema, instrucciones = InformeFree, INSTRUCCIONES_FREE.format(max_puntos=plan.max_puntos)
 
     with cliente().beta.messages.stream(
-        model=MODELO,
+        model=plan.modelo,
         max_tokens=32000,
-        betas=BETAS,
-        fallbacks="default",
+        **_respaldo(plan.modelo),
         system=[{"type": "text", "text": PERSONA, "cache_control": {"type": "ephemeral"}}],
         output_config={"effort": plan.esfuerzo},
         output_format=esquema,
@@ -129,10 +136,9 @@ def chat(informe: dict, historial: list[dict], plan: Plan) -> Iterator[str]:
                 if m.get("role") in ("user", "assistant") and m.get("content")]
 
     with cliente().beta.messages.stream(
-        model=MODELO,
+        model=MODELO_CHAT,
         max_tokens=8000 if plan.nombre == "free" else 32000,
-        betas=BETAS,
-        fallbacks="default",
+        **_respaldo(MODELO_CHAT),
         system=[{"type": "text", "text": PERSONA},
                 {"type": "text", "text": contexto, "cache_control": {"type": "ephemeral"}}],
         output_config={"effort": "low" if plan.nombre == "free" else "medium"},

@@ -183,3 +183,14 @@ def test_chat_revision_ajena():
     rid = analizar("free").json()["id"]
     r = c.post("/api/chat", json={"revision": rid, "historial": [{"role": "user", "content": "q"}]}, headers=U2)
     assert r.status_code == 404
+
+
+# ---- Modelos ----
+
+def test_modelos_por_plan():
+    from app.ia import _respaldo
+    from app.planes import PLANES
+    assert PLANES["free"].modelo == "claude-haiku-5-5"
+    assert PLANES["pro"].modelo == "claude-opus-5-5"
+    assert _respaldo("claude-haiku-5-5") == {}  # Haiku no admite modelo de respaldo
+    assert _respaldo("claude-opus-5-5")["fallbacks"] == "default"

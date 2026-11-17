@@ -102,7 +102,9 @@ Tiene que ir detrás de **HTTPS** (Android no permite http en la versión public
 La base de datos (SQLite) se guarda en el volumen `/datos`: saldos, compras y los informes
 (nunca la nómina original).
 
-Variables: `NOMINAS_MODELO` (modelo de Claude, por defecto `claude-opus-5-5`),
+Variables: modelos de Claude `NOMINAS_MODELO_FREE` y `NOMINAS_MODELO_CHAT` (por defecto
+`claude-haiku-5-5`, el más barato) y `NOMINAS_MODELO_PRO` (por defecto `claude-opus-5-5`, el de
+más calidad, sólo para la revisión de pago),
 `NOMINAS_FREE_POR_DIA` (3), `NOMINAS_MENSUAL_POR_MES` (30).
 
 Para publicar en Google Play, ver [PUBLICAR.md](PUBLICAR.md).

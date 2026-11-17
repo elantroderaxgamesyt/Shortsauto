@@ -2,12 +2,17 @@
 import os
 from dataclasses import dataclass
 
-MODELO = os.getenv("NOMINAS_MODELO", "claude-opus-5-5")
+# Modelos de Claude. Se pueden cambiar con variables de entorno sin tocar código.
+# Revisión gratis y chat con Haiku (mucho más barato); revisión completa (de pago) con Opus.
+MODELO_FREE = os.getenv("NOMINAS_MODELO_FREE", "claude-haiku-5-5")
+MODELO_PRO = os.getenv("NOMINAS_MODELO_PRO", "claude-opus-5-5")
+MODELO_CHAT = os.getenv("NOMINAS_MODELO_CHAT", "claude-haiku-5-5")
 
 
 @dataclass(frozen=True)
 class Plan:
     nombre: str
+    modelo: str            # modelo de Claude para el análisis
     esfuerzo: str          # output_config.effort de Claude
     max_puntos: int        # puntos del informe (0 = sin límite)
     preguntas_chat: int    # preguntas por revisión (0 = ilimitadas)
@@ -15,8 +20,8 @@ class Plan:
 
 
 PLANES = {
-    "free": Plan("free", esfuerzo="low", max_puntos=5, preguntas_chat=1, comprobaciones="basicas"),
-    "pro": Plan("pro", esfuerzo="high", max_puntos=0, preguntas_chat=0, comprobaciones="completas"),
+    "free": Plan("free", modelo=MODELO_FREE, esfuerzo="medium", max_puntos=5, preguntas_chat=1, comprobaciones="basicas"),
+    "pro": Plan("pro", modelo=MODELO_PRO, esfuerzo="high", max_puntos=0, preguntas_chat=0, comprobaciones="completas"),
 }
 
 # Productos de Google Play (créalos con estos mismos IDs en Play Console).
