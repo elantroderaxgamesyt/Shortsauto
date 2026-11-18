@@ -30,7 +30,7 @@ paga cada vez que se hace (2,99 €, compra dentro de la app).
 | Explicación de cada línea | — | ✅ |
 | Resumen para la reclamación (qué, cuánto, a quién, plazo y mensaje listo para enviar) | — | ✅ |
 | Preguntas para RRHH | — | ✅ |
-| Preguntas a Nora | 1 | Ilimitadas |
+| Preguntas a Nora | 1 por anuncio visto (máx. 5) | 3 sin anuncios + 1 por anuncio visto (máx. 5) |
 | Informe en PDF | — | ✅ |
 
 Anuncios (sólo Android): al abrir la app (máx. 1 cada 4 h) y un banner en Inicio y Mis revisiones.
@@ -92,7 +92,7 @@ Configuración en GitHub (*Settings → Secrets and variables → Actions*):
 | Secreto | `ANDROID_KEYSTORE_BASE64` | Clave de subida a Play Store (`base64 -w0 upload.jks`) |
 | Secreto | `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Datos de esa clave |
 | Variable | `ADMOB_APP_ID` | Id de la app en AdMob (`ca-app-pub-…~…`) |
-| Variable | `ADMOB_BANNER`, `ADMOB_APERTURA` | Ids de los bloques de anuncios (`ca-app-pub-…/…`) |
+| Variable | `ADMOB_BANNER`, `ADMOB_APERTURA`, `ADMOB_RECOMPENSA` | Ids de los bloques de anuncios (`ca-app-pub-…/…`) |
 
 ## Servidor en producción
 
@@ -108,6 +108,11 @@ docker run -p 8000:8000 -v datos:/datos \
 Tiene que ir detrás de **HTTPS** (Android no permite http en la versión publicada).
 La base de datos (SQLite) se guarda en el volumen `/datos`: saldos, compras y los informes
 (nunca la nómina original).
+
+Preguntas a Nora: `NOMINAS_PREGUNTAS_GRATIS` (0) y `NOMINAS_PREGUNTAS_COMPLETA` (3) incluidas;
+después 1 por anuncio con recompensa, hasta `NOMINAS_MAX_PREGUNTAS_ANUNCIO` (5) por revisión.
+`NOMINAS_VERIFICACION_ANUNCIOS`: `app` (se fía de la app; sólo con anuncios de prueba) o `ssv`
+(Google avisa al servidor en `/api/admob/recompensa` con firma; **obligatorio con anuncios reales**).
 
 Variables: modelos de Claude `NOMINAS_MODELO_FREE` y `NOMINAS_MODELO_CHAT` (por defecto
 `claude-haiku-5-5`, el más barato) y `NOMINAS_MODELO_PRO` (por defecto `claude-opus-5-5`, el de

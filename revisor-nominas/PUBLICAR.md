@@ -37,8 +37,13 @@ En *Monetizar → Productos*:
 
 ## 7. Anuncios (AdMob)
 - [ ] Alta gratuita en [AdMob](https://admob.google.com) con tu cuenta de Google; datos fiscales y de pago (IBAN).
-- [ ] *Apps → Añadir app* (Android, vinculada a Play) y crear dos bloques: **Banner** y **Apertura de app**.
-- [ ] Guardar en GitHub las variables `ADMOB_APP_ID`, `ADMOB_BANNER` y `ADMOB_APERTURA` y recompilar.
+- [ ] *Apps → Añadir app* (Android, vinculada a Play) y crear tres bloques: **Banner**, **Apertura de app**
+      y **Bonificado** (con recompensa: 1 unidad, "pregunta").
+- [ ] En el bloque bonificado, activar la **verificación en el servidor** con la URL
+      `https://TU-SERVIDOR/api/admob/recompensa` y poner en el servidor `NOMINAS_VERIFICACION_ANUNCIOS=ssv`
+      (sin esto, alguien podría conseguir preguntas sin ver anuncios).
+- [ ] Guardar en GitHub las variables `ADMOB_APP_ID`, `ADMOB_BANNER`, `ADMOB_APERTURA` y `ADMOB_RECOMPENSA`
+      y recompilar.
 - [ ] *Privacidad y mensajes*: crear el mensaje de **RGPD** (consentimiento) para la UE. La app ya lo muestra.
 - [ ] *Bloquear contenido*: quitar categorías que no pegan con la app (préstamos rápidos, apuestas, citas…).
 - [ ] Publicar `app-ads.txt` (te lo da AdMob) en la raíz de la web que pongas como sitio del desarrollador en Play.

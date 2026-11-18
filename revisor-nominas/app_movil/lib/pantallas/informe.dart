@@ -483,7 +483,7 @@ class _Mejorar extends StatelessWidget {
         for (final v in const [
           'Recalculamos cada cotización y el IRPF',
           'Resumen para la reclamación con el mensaje listo para enviar',
-          'Preguntas ilimitadas a Nora e informe en PDF',
+          '3 preguntas a Nora sin anuncios e informe en PDF',
         ])
           Padding(
             padding: const EdgeInsets.only(bottom: 6),

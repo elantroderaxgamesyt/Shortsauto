@@ -92,6 +92,48 @@ class Anuncios extends ChangeNotifier {
     await ad.show();
   }
 
+  /// ¿Se pueden ver anuncios con recompensa en este dispositivo?
+  bool get recompensaDisponible => simularAnuncios || _listo;
+
+  /// Enseña un anuncio con recompensa. Devuelve true si el usuario lo ha visto entero.
+  ///
+  /// [dispositivo] y [revision] viajan a AdMob para que, con la verificación en el servidor,
+  /// Google avise a nuestro servidor de qué revisión gana la pregunta.
+  Future<bool> verAnuncioRecompensa({required String dispositivo, required String revision}) async {
+    if (simularAnuncios) {
+      await Future.delayed(const Duration(seconds: 1));
+      return true;
+    }
+    if (!_listo) return false;
+    final cargado = Completer<RewardedAd?>();
+    RewardedAd.load(
+      adUnitId: admobRecompensa,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) => cargado.complete(ad),
+        onAdFailedToLoad: (_) => cargado.complete(null),
+      ),
+    );
+    final ad = await cargado.future.timeout(const Duration(seconds: 15), onTimeout: () => null);
+    if (ad == null) return false;
+    await ad.setServerSideOptions(ServerSideVerificationOptions(userId: dispositivo, customData: revision));
+    final cerrado = Completer<void>();
+    var ganado = false;
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (a) {
+        a.dispose();
+        if (!cerrado.isCompleted) cerrado.complete();
+      },
+      onAdFailedToShowFullScreenContent: (a, _) {
+        a.dispose();
+        if (!cerrado.isCompleted) cerrado.complete();
+      },
+    );
+    await ad.show(onUserEarnedReward: (_, _) => ganado = true);
+    await cerrado.future;
+    return ganado;
+  }
+
   /// Para el apartado "Privacidad de los anuncios" de la pantalla de Información.
   Future<void> abrirPrivacidad() => ConsentForm.showPrivacyOptionsForm((_) {});
 }

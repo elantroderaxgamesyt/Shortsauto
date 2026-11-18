@@ -17,6 +17,7 @@ env:
   ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
   ADMOB_BANNER: ${{ vars.ADMOB_BANNER }}
   ADMOB_APERTURA: ${{ vars.ADMOB_APERTURA }}
+  ADMOB_RECOMPENSA: ${{ vars.ADMOB_RECOMPENSA }}
 
 jobs:
   servidor:
@@ -62,6 +63,7 @@ jobs:
           V="--build-number=${{ github.run_number }} --dart-define=API_URL=$API_URL"
           [ -n "$ADMOB_BANNER" ] && V="$V --dart-define=ADMOB_BANNER=$ADMOB_BANNER"
           [ -n "$ADMOB_APERTURA" ] && V="$V --dart-define=ADMOB_APERTURA=$ADMOB_APERTURA"
+          [ -n "$ADMOB_RECOMPENSA" ] && V="$V --dart-define=ADMOB_RECOMPENSA=$ADMOB_RECOMPENSA"
           [ -z "$ADMOB_APP_ID" ] && echo "::warning::Sin ADMOB_APP_ID: la app lleva anuncios de prueba."
           flutter build apk --release $V
           flutter build appbundle --release $V

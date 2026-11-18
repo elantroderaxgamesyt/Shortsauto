@@ -26,6 +26,11 @@ bool get anunciosActivos => !kIsWeb && defaultTargetPlatform == TargetPlatform.a
 
 // Bloques de anuncios. Por defecto, los de PRUEBA de Google (no generan dinero
 // y se pueden pulsar sin riesgo). Los reales se pasan al compilar:
-//   --dart-define=ADMOB_BANNER=ca-app-pub-XXXX/YYYY --dart-define=ADMOB_APERTURA=ca-app-pub-XXXX/ZZZZ
+//   --dart-define=ADMOB_BANNER=… --dart-define=ADMOB_APERTURA=… --dart-define=ADMOB_RECOMPENSA=…
 const admobBanner = String.fromEnvironment('ADMOB_BANNER', defaultValue: 'ca-app-pub-3940256099942544/9214589741');
 const admobApertura = String.fromEnvironment('ADMOB_APERTURA', defaultValue: 'ca-app-pub-3940256099942544/9257395921');
+const admobRecompensa =
+    String.fromEnvironment('ADMOB_RECOMPENSA', defaultValue: 'ca-app-pub-3940256099942544/5224354917');
+
+/// Sólo desarrollo (web/Windows, donde no hay AdMob): simula los anuncios con recompensa.
+const simularAnuncios = bool.fromEnvironment('SIMULAR_ANUNCIOS');

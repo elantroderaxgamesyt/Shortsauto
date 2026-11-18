@@ -27,8 +27,11 @@ class Revision {
   Map<String, dynamic> get informe => j['informe'];
   Map<String, dynamic> get datos => informe['datos'];
   List get calculos => j['calculos'];
-  int get preguntasChat => j['preguntas_chat'] ?? 0;
-  int get preguntasUsadas => j['preguntas_usadas'] ?? 0;
+  /// Preguntas a Nora que quedan (incluidas en el plan + ganadas con anuncios).
+  int get preguntasDisponibles => j['preguntas_disponibles'] ?? 0;
+
+  /// ¿Se puede ganar otra pregunta viendo un anuncio? (hay un máximo por revisión)
+  bool get preguntasPorAnuncio => j['preguntas_por_anuncio'] == true;
   String? get fecha => j['fecha'];
 }
 
@@ -102,6 +105,10 @@ class Api {
     final r = await _peticion(http.get(_u('/api/revisiones'), headers: _cab));
     return [for (final x in jsonDecode(utf8.decode(r.bodyBytes)) as List) ResumenRevision(x)];
   }
+
+  /// Avisa de que se ha visto un anuncio con recompensa. Devuelve las preguntas disponibles.
+  Future<int> recompensa(String revision) async =>
+      (await _json(http.post(_u('/api/revisiones/$revision/recompensa'), headers: _cab)))['preguntas_disponibles'] ?? 0;
 
   Future<Revision> revision(String id) async => Revision(await _json(http.get(_u('/api/revisiones/$id'), headers: _cab)));
 

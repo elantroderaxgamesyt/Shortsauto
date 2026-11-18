@@ -6,13 +6,13 @@ import logging
 import re
 
 import anthropic
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from . import almacen, google_play, ia
+from . import admob_ssv, almacen, google_play, ia
 from .comprobaciones import para_plan
-from .planes import PLANES
+from .planes import MAX_PREGUNTAS_ANUNCIO, PLANES, VERIFICACION_ANUNCIOS
 
 log = logging.getLogger("nominas")
 MAX_BYTES = 10 * 1024 * 1024
@@ -103,6 +103,14 @@ async def analizar(archivo: UploadFile = File(...), plan: str = Form("free"), co
     return _revision_json(almacen.revision(disp, rid))
 
 
+def _preguntas_disponibles(rev) -> int | None:
+    """Preguntas que le quedan: las incluidas en el plan + 1 por cada anuncio visto - las hechas."""
+    incluidas = PLANES[rev["plan"]].preguntas_chat
+    if incluidas is None:
+        return None
+    return max(0, incluidas + rev["preguntas_extra"] - rev["preguntas"])
+
+
 def _revision_json(rev) -> dict:
     contenido = json.loads(rev["informe"])
     return {
@@ -112,8 +120,9 @@ def _revision_json(rev) -> dict:
         "demo": contenido.get("demo", False),
         "informe": contenido["informe"],
         "calculos": contenido["calculos"],
-        "preguntas_chat": PLANES[rev["plan"]].preguntas_chat,
-        "preguntas_usadas": rev["preguntas"],
+        "preguntas_ilimitadas": PLANES[rev["plan"]].preguntas_chat is None,
+        "preguntas_disponibles": _preguntas_disponibles(rev),
+        "preguntas_por_anuncio": rev["preguntas_extra"] < MAX_PREGUNTAS_ANUNCIO,
     }
 
 
@@ -153,9 +162,10 @@ def chat(req: PeticionChat, disp: str = Depends(dispositivo)):
     if not rev:
         raise HTTPException(404, "Revisión no encontrada.")
     p = PLANES[rev["plan"]]
-    if p.preguntas_chat and rev["preguntas"] >= p.preguntas_chat:
-        raise HTTPException(402, f"La versión gratuita incluye {p.preguntas_chat} preguntas por nómina. "
-                                 "Con la revisión completa las preguntas son ilimitadas.")
+    if _preguntas_disponibles(rev) == 0:
+        if rev["preguntas_extra"] >= MAX_PREGUNTAS_ANUNCIO:
+            raise HTTPException(429, "Has llegado al máximo de preguntas para esta revisión.")
+        raise HTTPException(402, "Mira un anuncio corto para hacer otra pregunta a Nora.")
     if not req.historial or req.historial[-1].role != "user":
         raise HTTPException(400, "Falta la pregunta.")
     almacen.sumar_pregunta(rev["id"])
@@ -171,3 +181,35 @@ def chat(req: PeticionChat, disp: str = Depends(dispositivo)):
             yield "\n\n(Se ha producido un error con la IA. Inténtalo de nuevo.)"
 
     return StreamingResponse(gen(), media_type="text/plain; charset=utf-8")
+
+
+# ---------------------------------------------------------------- anuncios con recompensa
+
+@app.post("/api/revisiones/{rid}/recompensa")
+def recompensa(rid: str, disp: str = Depends(dispositivo)):
+    """La app avisa de que el usuario ha visto un anuncio con recompensa.
+
+    Con NOMINAS_VERIFICACION_ANUNCIOS=app se suma la pregunta aquí (sólo para pruebas).
+    Con "ssv" la suma Google llamando a /api/admob/recompensa, y esto sólo devuelve cuántas hay.
+    """
+    rev = almacen.revision(disp, rid)
+    if not rev:
+        raise HTTPException(404, "Revisión no encontrada.")
+    if VERIFICACION_ANUNCIOS != "ssv" and not almacen.sumar_pregunta_extra(rid, MAX_PREGUNTAS_ANUNCIO):
+        raise HTTPException(429, f"Has llegado al máximo de {MAX_PREGUNTAS_ANUNCIO} preguntas con anuncios "
+                                 "en esta revisión.")
+    return {"preguntas_disponibles": _preguntas_disponibles(almacen.revision(disp, rid))}
+
+
+@app.get("/api/admob/recompensa")
+def admob_recompensa(request: Request):
+    """Aviso de AdMob (verificación en el servidor) de que se ha visto un anuncio con recompensa.
+    La app pone el id del dispositivo en user_id y el de la revisión en custom_data."""
+    try:
+        p = admob_ssv.verificar(request.url.query)
+    except admob_ssv.FirmaNoValida as e:
+        raise HTTPException(400, str(e))
+    rev = almacen.revision(p.get("user_id", ""), p.get("custom_data", ""))
+    if rev:
+        almacen.sumar_pregunta_extra(rev["id"], MAX_PREGUNTAS_ANUNCIO, transaccion=p.get("transaction_id"))
+    return {"ok": True}  # AdMob sólo necesita un 200

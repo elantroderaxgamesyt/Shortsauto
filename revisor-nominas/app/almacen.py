@@ -2,7 +2,8 @@
 
 Cada instalación de la app manda un identificador anónimo y aleatorio en la cabecera
 X-Dispositivo. Sólo sirve para el límite de revisiones gratis al día, para el historial
-"Mis revisiones" y para que nadie pueda leer el chat de otro. No se guarda la nómina,
+"Mis revisiones", para las preguntas ganadas con anuncios y para que nadie pueda leer
+el chat de otro. No se guarda la nómina,
 sólo el informe.
 
 Las revisiones completas se pagan una a una (2,99 € en Google Play): cada compra se
@@ -30,9 +31,15 @@ CREATE TABLE IF NOT EXISTS revisiones (
     compra TEXT UNIQUE,          -- token de Google Play con el que se pagó (NULL si es gratis)
     informe TEXT NOT NULL,
     preguntas INTEGER NOT NULL DEFAULT 0,
+    preguntas_extra INTEGER NOT NULL DEFAULT 0,  -- ganadas viendo anuncios
     fecha TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS rev_dispositivo ON revisiones(dispositivo, fecha);
+CREATE TABLE IF NOT EXISTS recompensas (
+    transaccion TEXT PRIMARY KEY,   -- id de AdMob: cada anuncio visto cuenta una sola vez
+    revision TEXT NOT NULL,
+    fecha TEXT NOT NULL
+);
 """
 
 
@@ -55,6 +62,9 @@ def db() -> sqlite3.Connection:
                                isolation_level=None)
         _con.row_factory = sqlite3.Row
         _con.executescript(ESQUEMA)
+        columnas = {c[1] for c in _con.execute("PRAGMA table_info(revisiones)")}
+        if "preguntas_extra" not in columnas:  # bases de datos creadas antes de este cambio
+            _con.execute("ALTER TABLE revisiones ADD COLUMN preguntas_extra INTEGER NOT NULL DEFAULT 0")
     return _con
 
 
@@ -104,3 +114,29 @@ def listar_revisiones(disp: str, limite: int = 50) -> list[sqlite3.Row]:
 def sumar_pregunta(rid: str) -> None:
     with _lock:
         db().execute("UPDATE revisiones SET preguntas = preguntas + 1 WHERE id = ?", (rid,))
+
+
+def sumar_pregunta_extra(rid: str, maximo: int, transaccion: str | None = None) -> bool:
+    """Suma una pregunta ganada con un anuncio. False si se ha llegado al máximo o la
+    transacción de AdMob ya se había contado."""
+    with _lock:
+        c = db()
+        c.execute("BEGIN IMMEDIATE")
+        try:
+            if transaccion:
+                try:
+                    c.execute("INSERT INTO recompensas(transaccion, revision, fecha) VALUES (?,?,?)",
+                              (transaccion, rid, ahora().isoformat()))
+                except sqlite3.IntegrityError:
+                    c.execute("ROLLBACK")
+                    return False
+            cur = c.execute("UPDATE revisiones SET preguntas_extra = preguntas_extra + 1 "
+                            "WHERE id = ? AND preguntas_extra < ?", (rid, maximo))
+            if cur.rowcount == 0:
+                c.execute("ROLLBACK")
+                return False
+            c.execute("COMMIT")
+            return True
+        except Exception:
+            c.execute("ROLLBACK")
+            raise

@@ -140,25 +140,95 @@ def test_historial():
     assert [x["id"] for x in lista] == [b["id"], a["id"]]
     assert lista[0]["plan"] == "pro" and lista[0]["veredicto"] == "revisar" and lista[0]["liquido"] == 1997.23
     r = c.get(f"/api/revisiones/{a['id']}", headers=U1).json()
-    assert r["informe"] == a["informe"] and r["preguntas_chat"] == 1
+    assert r["informe"] == a["informe"] and r["preguntas_disponibles"] == 0 and r["preguntas_por_anuncio"]
     assert c.get(f"/api/revisiones/{a['id']}", headers=U2).status_code == 404
     assert c.get("/api/revisiones", headers=U2).json() == []
 
 
 # ---- Chat ----
 
-def test_limite_chat_free():
+def chat(rid, h=U1):
+    return c.post("/api/chat", json={"revision": rid, "historial": [{"role": "user", "content": "q"}]}, headers=h)
+
+
+def anuncio(rid, h=U1):
+    return c.post(f"/api/revisiones/{rid}/recompensa", headers=h)
+
+
+def test_free_una_pregunta_por_anuncio():
     rid = analizar("free").json()["id"]
-    h = [{"role": "user", "content": "q"}]
-    assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 200
-    assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 402
+    assert chat(rid).status_code == 402               # sin anuncio, no hay pregunta
+    assert anuncio(rid).json()["preguntas_disponibles"] == 1
+    assert chat(rid).status_code == 200
+    assert chat(rid).status_code == 402               # gastada
+    anuncio(rid)
+    anuncio(rid)
+    assert chat(rid).status_code == 200 and chat(rid).status_code == 200
 
 
-def test_pro_chat_ilimitado():
-    rid = analizar("pro", compra="prueba-chat").json()["id"]
-    h = [{"role": "user", "content": "q"}]
+def test_maximo_preguntas_por_anuncio():
+    rid = analizar("free").json()["id"]
     for _ in range(5):
-        assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 200
+        assert anuncio(rid).status_code == 200
+    assert anuncio(rid).status_code == 429
+    for _ in range(5):
+        assert chat(rid).status_code == 200
+    assert chat(rid).status_code == 429              # tope: ni con anuncios
+
+
+def test_anuncio_en_revision_ajena():
+    rid = analizar("free").json()["id"]
+    assert anuncio(rid, U2).status_code == 404
+
+
+def test_completa_3_preguntas_y_luego_anuncios():
+    pro = analizar("pro", compra="prueba-anuncio").json()
+    rid = pro["id"]
+    assert not pro["preguntas_ilimitadas"] and pro["preguntas_disponibles"] == 3
+    for _ in range(3):
+        assert chat(rid).status_code == 200      # 3 sin anuncios
+    assert chat(rid).status_code == 402
+    assert anuncio(rid).json()["preguntas_disponibles"] == 1
+    assert chat(rid).status_code == 200
+
+
+def test_modo_ssv_no_se_fia_de_la_app(monkeypatch):
+    from app import main
+    monkeypatch.setattr(main, "VERIFICACION_ANUNCIOS", "ssv")
+    rid = analizar("free").json()["id"]
+    assert anuncio(rid).json()["preguntas_disponibles"] == 0
+
+
+def test_ssv_de_admob(monkeypatch):
+    """Simula la llamada firmada de Google con una clave de prueba."""
+    import base64
+    from urllib.parse import quote
+
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    from app import admob_ssv
+    clave = ec.generate_private_key(ec.SECP256R1())
+    pem = clave.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+    monkeypatch.setattr(admob_ssv, "_cargar_claves", lambda: {"123": pem})
+
+    rid = analizar("free").json()["id"]
+
+    def llamada(transaccion, firmar=True):
+        q = (f"ad_network=5450213213286189855&ad_unit=1234&custom_data={quote(rid)}&reward_amount=1"
+             f"&reward_item=pregunta&timestamp=1700000000000&transaction_id={transaccion}"
+             f"&user_id={U1['X-Dispositivo']}")
+        firma = clave.sign(q.encode(), ec.ECDSA(hashes.SHA256())) if firmar else b"falsa"
+        f = base64.urlsafe_b64encode(firma).decode().rstrip("=")
+        return c.get(f"/api/admob/recompensa?{q}&signature={f}&key_id=123")
+
+    assert llamada("t1").status_code == 200
+    assert llamada("t1").status_code == 200           # repetida: no suma otra vez
+    assert llamada("t2", firmar=False).status_code == 400
+    r = c.get(f"/api/revisiones/{rid}", headers=U1).json()
+    assert r["preguntas_disponibles"] == 1
+
+
 
 
 def test_chat_revision_ajena():
