@@ -106,12 +106,14 @@ class _Portada extends StatelessWidget {
           ),
         ),
         const Hueco(12),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          for (final (i, txt) in const ['Gratis', 'Sin registro', 'Resultado al momento'].indexed) ...[
-            if (i > 0) Text('  ·  ', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
-            Text(txt, style: t.textTheme.bodySmall?.copyWith(color: Colors.white.withValues(alpha: .85))),
-          ],
-        ]),
+        // Wrap: en pantallas estrechas pasa a la línea siguiente en vez de cortarse.
+        Center(
+          child: Wrap(alignment: WrapAlignment.center, runSpacing: 4, children: [
+            for (final (i, txt) in const ['Gratis', 'Sin registro', 'Resultado al momento'].indexed)
+              Text('${i > 0 ? '  ·  ' : ''}$txt',
+                  style: t.textTheme.bodySmall?.copyWith(color: Colors.white.withValues(alpha: .85))),
+          ]),
+        ),
       ]),
     );
   }
