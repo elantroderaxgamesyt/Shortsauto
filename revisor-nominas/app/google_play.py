@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import os
 
-from .planes import PRODUCTO_REVISION
+from .planes import PRODUCTO_PDF, PRODUCTO_REVISION
 
 API = "https://androidpublisher.googleapis.com/androidpublisher/v3/applications"
 
@@ -41,10 +41,19 @@ def _http():
 
 def verificar_revision(token: str) -> None:
     """Comprueba que el token corresponde a una compra pagada de la revisión completa."""
+    _verificar(PRODUCTO_REVISION, token)
+
+
+def verificar_pdf(token: str) -> None:
+    """Comprueba que el token corresponde a una compra pagada del informe en PDF."""
+    _verificar(PRODUCTO_PDF, token)
+
+
+def _verificar(producto: str, token: str) -> None:
     if os.getenv("NOMINAS_PAGOS_PRUEBA") == "1" and token.startswith("prueba-"):
         return
     paquete = os.getenv("GOOGLE_PLAY_PAQUETE", "es.revisornominas.app")
-    r = _http().get(f"{API}/{paquete}/purchases/products/{PRODUCTO_REVISION}/tokens/{token}", timeout=20)
+    r = _http().get(f"{API}/{paquete}/purchases/products/{producto}/tokens/{token}", timeout=20)
     if r.status_code in (400, 404, 410):
         raise CompraNoValida("Google no reconoce esta compra.")
     r.raise_for_status()

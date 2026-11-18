@@ -49,6 +49,12 @@ class ServidorDemo {
 
   Map<String, dynamic>? revision(String id) => _revisiones[id] == null ? null : Map.of(_revisiones[id]!);
 
+  void comprarPdf(String id) {
+    final r = _revisiones[id];
+    if (r == null || r['plan'] != 'pro') throw StateError('El informe en PDF es de la revisión completa.');
+    r['pdf_pagado'] = true;
+  }
+
   int recompensa(String id) {
     final r = _revisiones[id];
     if (r == null) return 0;

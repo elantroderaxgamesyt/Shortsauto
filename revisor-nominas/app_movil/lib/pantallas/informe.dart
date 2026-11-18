@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../config.dart';
 import '../pagos.dart';
 import '../pdf_informe.dart';
 import '../tema.dart';
@@ -483,7 +484,7 @@ class _Mejorar extends StatelessWidget {
         for (final v in const [
           'Recalculamos cada cotización y el IRPF',
           'Resumen para la reclamación con el mensaje listo para enviar',
-          '3 preguntas a Nora sin anuncios e informe en PDF',
+          '3 preguntas a Nora sin anuncios e informe en PDF (+$precioPdf)',
         ])
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
@@ -506,7 +507,7 @@ class _Mejorar extends StatelessWidget {
                 empezarRevision(context);
               }
             },
-            child: Text('${archivo != null ? 'Revisar esta nómina a fondo' : 'Hacer una revisión completa'} · ${Pagos.yo.precio}'),
+            child: Text('${archivo != null ? 'Revisar esta nómina a fondo' : 'Hacer una revisión completa'} · ${Pagos.yo.precio(productoRevision)}'),
           ),
         ),
       ]),
@@ -514,9 +515,81 @@ class _Mejorar extends StatelessWidget {
   }
 }
 
-class _BarraAcciones extends StatelessWidget {
+class _BarraAcciones extends StatefulWidget {
   const _BarraAcciones(this.r);
   final Revision r;
+
+  @override
+  State<_BarraAcciones> createState() => _BarraAccionesState();
+}
+
+class _BarraAccionesState extends State<_BarraAcciones> {
+  bool pagando = false;
+  Revision get r => widget.r;
+
+  /// El PDF cuesta 0,50 € una vez por informe; después se puede generar las veces que se quiera.
+  Future<void> pdf() async {
+    if (!r.pdfPagado) {
+      final pagar = await showModalBottomSheet<bool>(
+        context: context,
+        builder: (context) {
+          final t = Theme.of(context);
+          final ya = Pagos.yo.pagoPendiente(productoPdf) != null;
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const Icon(Icons.picture_as_pdf_rounded, size: 40, color: Marca.pro),
+                const Hueco(12),
+                Text('Informe en PDF', style: t.textTheme.titleLarge, textAlign: TextAlign.center),
+                const Hueco(8),
+                Text(
+                  'Descarga, imprime o envía el informe completo con el resumen para la reclamación. '
+                  'Se paga una vez por informe: después puedes generarlo las veces que quieras.',
+                  style: t.textTheme.bodyMedium?.copyWith(color: Tonos.de(context).suave),
+                  textAlign: TextAlign.center,
+                ),
+                const Hueco(20),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Marca.pro),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(ya
+                      ? 'Usar el pago que ya hiciste'
+                      : modoDemo
+                          ? 'Pagar ${Pagos.yo.precio(productoPdf)} (simulado)'
+                          : 'Pagar ${Pagos.yo.precio(productoPdf)}'),
+                ),
+                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Ahora no')),
+              ]),
+            ),
+          );
+        },
+      );
+      if (pagar != true || !mounted) return;
+      setState(() => pagando = true);
+      try {
+        final token = await Pagos.yo.pagar(productoPdf);
+        if (token == null) {
+          if (mounted && Pagos.yo.error != null) aviso(context, Pagos.yo.error!);
+          return;
+        }
+        try {
+          await Api.yo.comprarPdf(r.id, token);
+          await Pagos.yo.usada(token);
+          r.j['pdf_pagado'] = true;
+        } on ErrorApi catch (e) {
+          if (e.codigo == 409) await Pagos.yo.usada(token);
+          if (mounted) {
+            aviso(context, e.codigo == 409 ? e.mensaje : '${e.mensaje} Tu pago está guardado: no se cobrará otra vez.');
+          }
+          return;
+        }
+      } finally {
+        if (mounted) setState(() => pagando = false);
+      }
+    }
+    await imprimirInforme(r);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -543,8 +616,14 @@ class _BarraAcciones extends StatelessWidget {
                   height: 52,
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16)),
-                    onPressed: () => imprimirInforme(r),
-                    child: const Row(children: [Icon(Icons.picture_as_pdf_outlined, size: 20), SizedBox(width: 6), Text('PDF')]),
+                    onPressed: pagando ? null : pdf,
+                    child: pagando
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Row(children: [
+                            const Icon(Icons.picture_as_pdf_outlined, size: 20),
+                            const SizedBox(width: 6),
+                            Text(r.pdfPagado ? 'PDF' : 'PDF · ${Pagos.yo.precio(productoPdf)}'),
+                          ]),
                   ),
                 ),
               ],

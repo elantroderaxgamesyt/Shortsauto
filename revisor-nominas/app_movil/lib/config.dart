@@ -17,6 +17,8 @@ const pagosPrueba = bool.fromEnvironment('PAGOS_PRUEBA');
 
 const productoRevision = 'revision_pro'; // revisión completa, pago por revisión
 const precioRevision = '2,99 €';
+const productoPdf = 'informe_pdf'; // informe en PDF de una revisión completa
+const precioPdf = '0,50 €';
 
 /// Anuncios (Google AdMob): sólo en Android.
 bool get anunciosActivos => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;

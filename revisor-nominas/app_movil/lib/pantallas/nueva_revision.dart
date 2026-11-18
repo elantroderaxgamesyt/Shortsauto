@@ -129,7 +129,7 @@ class _PantallaPlanState extends State<PantallaPlan> {
     if (plan == 'pro') {
       // Pago único con Google Play; si ya había uno pagado sin usar, se usa ese.
       setState(() => pagando = true);
-      compra = await Pagos.yo.pagar();
+      compra = await Pagos.yo.pagar(productoRevision);
       if (!mounted) return;
       setState(() => pagando = false);
       if (compra == null) {
@@ -152,7 +152,7 @@ class _PantallaPlanState extends State<PantallaPlan> {
           listenable: Pagos.yo,
           builder: (context, _) {
             final pagos = Pagos.yo;
-            final yaPagada = pagos.pagoPendiente != null;
+            final yaPagada = pagos.pagoPendiente(productoRevision) != null;
             final freeAgotadas = freeHoy == 0;
             return Column(
               children: [
@@ -209,7 +209,7 @@ class _PantallaPlanState extends State<PantallaPlan> {
                         seleccionado: plan == 'pro',
                         onTap: () => setState(() => plan = 'pro'),
                         titulo: 'Revisión completa',
-                        precio: yaPagada ? 'Ya pagada' : pagos.precio,
+                        precio: yaPagada ? 'Ya pagada' : pagos.precio(productoRevision),
                         nota: yaPagada
                             ? 'Tienes un pago sin usar'
                             : modoDemo
@@ -222,7 +222,7 @@ class _PantallaPlanState extends State<PantallaPlan> {
                           'Recalcula Seguridad Social e IRPF',
                           'Resumen para la reclamación, listo para enviar',
                           '3 preguntas a Nora sin anuncios',
-                          'Informe en PDF',
+                          'Informe en PDF (+$precioPdf)',
                         ],
                       ),
                     ],
@@ -256,7 +256,7 @@ class _PantallaPlanState extends State<PantallaPlan> {
                                     ? (freeAgotadas ? 'Sin revisiones gratis hoy' : 'Revisar gratis')
                                     : yaPagada
                                     ? 'Hacer revisión completa'
-                                    : 'Pagar ${pagos.precio} y revisar',
+                                    : 'Pagar ${pagos.precio(productoRevision)} y revisar',
                               ),
                       ),
                     ),

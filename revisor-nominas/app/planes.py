@@ -28,6 +28,7 @@ PLANES = {
 
 # Producto de Google Play (créalo con este mismo id en Play Console).
 PRODUCTO_REVISION = "revision_pro"   # consumible, 2,99 €: una revisión completa
+PRODUCTO_PDF = "informe_pdf"         # consumible, 0,50 €: el PDF de una revisión completa
 
 # Preguntas a Nora: las incluidas en cada plan (gratis 0, completa 3) y después 1 por cada
 # anuncio con recompensa visto, como mucho este número por revisión (cada pregunta cuesta IA).

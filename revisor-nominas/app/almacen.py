@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS revisiones (
     informe TEXT NOT NULL,
     preguntas INTEGER NOT NULL DEFAULT 0,
     preguntas_extra INTEGER NOT NULL DEFAULT 0,  -- ganadas viendo anuncios
+    compra_pdf TEXT UNIQUE,      -- token con el que se pagó el PDF (NULL si no se ha comprado)
     fecha TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS rev_dispositivo ON revisiones(dispositivo, fecha);
@@ -65,6 +66,9 @@ def db() -> sqlite3.Connection:
         columnas = {c[1] for c in _con.execute("PRAGMA table_info(revisiones)")}
         if "preguntas_extra" not in columnas:  # bases de datos creadas antes de este cambio
             _con.execute("ALTER TABLE revisiones ADD COLUMN preguntas_extra INTEGER NOT NULL DEFAULT 0")
+        if "compra_pdf" not in columnas:
+            _con.execute("ALTER TABLE revisiones ADD COLUMN compra_pdf TEXT")
+            _con.execute("CREATE UNIQUE INDEX IF NOT EXISTS rev_compra_pdf ON revisiones(compra_pdf)")
     return _con
 
 
@@ -88,7 +92,18 @@ def comprobar_free(disp: str) -> None:
 
 
 def compra_usada(token: str) -> bool:
-    return db().execute("SELECT 1 FROM revisiones WHERE compra = ?", (token,)).fetchone() is not None
+    return db().execute("SELECT 1 FROM revisiones WHERE compra = ? OR compra_pdf = ?",
+                        (token, token)).fetchone() is not None
+
+
+def marcar_pdf_pagado(rid: str, token: str) -> None:
+    with _lock:
+        try:
+            cur = db().execute("UPDATE revisiones SET compra_pdf = ? WHERE id = ? AND compra_pdf IS NULL", (token, rid))
+        except sqlite3.IntegrityError:
+            raise CompraUsada("Esta compra ya se ha usado.")
+        if cur.rowcount == 0:
+            raise CompraUsada("El PDF de este informe ya estaba pagado.")
 
 
 def guardar_revision(disp: str, plan: str, compra: str | None, contenido: dict) -> str:
