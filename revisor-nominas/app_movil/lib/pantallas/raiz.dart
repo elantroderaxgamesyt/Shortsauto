@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 import '../anuncios.dart';
 import '../estado.dart';
 import '../tema.dart';
-import 'cuenta.dart';
 import 'historial.dart';
 import 'inicio.dart';
 
@@ -26,7 +25,6 @@ class _PantallaRaizState extends State<PantallaRaiz> {
   static const _destinos = [
     (Icons.home_outlined, Icons.home_rounded, 'Inicio'),
     (Icons.history_rounded, Icons.history_rounded, 'Mis revisiones'),
-    (Icons.person_outline_rounded, Icons.person_rounded, 'Mi cuenta'),
   ];
 
   @override
@@ -34,13 +32,13 @@ class _PantallaRaizState extends State<PantallaRaiz> {
         valueListenable: pestana,
         builder: (context, i, _) {
           final ancho = MediaQuery.sizeOf(context).width >= 840;
-          final cuerpo = IndexedStack(index: i, children: const [PantallaInicio(), PantallaHistorial(), PantallaCuenta()]);
+          final cuerpo = IndexedStack(index: i, children: const [PantallaInicio(), PantallaHistorial()]);
           if (!ancho) {
             return Scaffold(
               body: cuerpo,
               bottomNavigationBar: Column(mainAxisSize: MainAxisSize.min, children: [
-                // Banner sólo en Inicio y Mis revisiones (y sólo para usuarios Free).
-                if (i < 2) const BannerAnuncio(),
+                // Banner abajo en Inicio y Mis revisiones (nunca en el informe, que es otra pantalla).
+                const BannerAnuncio(),
                 NavigationBar(
                   selectedIndex: i,
                   onDestinationSelected: (n) => pestana.value = n,

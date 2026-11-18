@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'api.dart';
-import 'compras.dart';
+import 'pagos.dart';
 import 'pantallas/raiz.dart';
 import 'tema.dart';
 
@@ -19,7 +19,7 @@ Future<void> main() async {
     };
     await Api.iniciar();
     runApp(const RevisorNominas());
-    unawaited(Tienda.yo.iniciar().catchError((Object e) => debugPrint('Tienda: $e')));
+    unawaited(Pagos.yo.iniciar().catchError((Object e) => debugPrint('Pagos: $e')));
   }, (e, pila) => debugPrint('Error sin capturar: $e\n$pila'));
 }
 

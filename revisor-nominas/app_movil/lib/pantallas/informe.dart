@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../pagos.dart';
 import '../pdf_informe.dart';
 import '../tema.dart';
 import '../widgets.dart';
@@ -18,7 +19,7 @@ const _titulos = {
 class PantallaInforme extends StatelessWidget {
   const PantallaInforme(this.r, {super.key, this.archivo});
   final Revision r;
-  final Archivo? archivo; // si viene de una revisión recién hecha, para pasarla a Pro
+  final Archivo? archivo; // si viene de una revisión recién hecha, para pasarla a revisión completa
 
   @override
   Widget build(BuildContext context) {
@@ -505,7 +506,7 @@ class _Mejorar extends StatelessWidget {
                 empezarRevision(context);
               }
             },
-            child: Text(archivo != null ? 'Revisar esta nómina a fondo' : 'Hacer una revisión completa'),
+            child: Text('${archivo != null ? 'Revisar esta nómina a fondo' : 'Hacer una revisión completa'} · ${Pagos.yo.precio}'),
           ),
         ),
       ]),

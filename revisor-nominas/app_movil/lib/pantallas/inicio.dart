@@ -1,9 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../compras.dart';
-import '../estado.dart';
 import '../tema.dart';
 import '../widgets.dart';
+import 'info.dart';
 import 'nueva_revision.dart';
 
 class PantallaInicio extends StatelessWidget {
@@ -26,7 +25,11 @@ class PantallaInicio extends StatelessWidget {
             const SizedBox(width: 10),
           ],
           Expanded(child: Text('Revisor de nóminas', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
-          const _ChipSaldo(),
+          IconButton(
+            tooltip: 'Información',
+            icon: const Icon(Icons.info_outline_rounded),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PantallaInfo())),
+          ),
         ]),
         const Hueco(20),
         const _Portada(),
@@ -155,42 +158,4 @@ class _Paso extends StatelessWidget {
       ]),
     );
   }
-}
-
-/// Saldo arriba a la derecha: "Pro · 2" o "Free". Lleva a Mi cuenta.
-class _ChipSaldo extends StatelessWidget {
-  const _ChipSaldo();
-
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-        listenable: Tienda.yo,
-        builder: (context, _) {
-          final c = Tienda.yo.cuenta;
-          if (c == null) return const SizedBox.shrink();
-          final pro = c.puedePro;
-          final morado = Theme.of(context).brightness == Brightness.dark ? Marca.proClaro : Marca.pro;
-          return InkWell(
-            borderRadius: BorderRadius.circular(99),
-            onTap: () => pestana.value = 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: pro ? Marca.degradadoPro : null,
-                color: pro ? null : Tonos.de(context).tenue,
-                borderRadius: BorderRadius.circular(99),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(pro ? Icons.workspace_premium_rounded : Icons.workspace_premium_outlined,
-                    size: 16, color: pro ? Colors.white : morado),
-                const SizedBox(width: 6),
-                Text(
-                  pro ? (c.suscripcion ? 'Pro mensual' : 'Pro · ${c.creditos}') : 'Hazte Pro',
-                  style: TextStyle(
-                      color: pro ? Colors.white : morado, fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-              ]),
-            ),
-          );
-        },
-      );
 }

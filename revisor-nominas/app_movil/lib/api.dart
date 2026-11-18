@@ -17,16 +17,6 @@ class ErrorApi implements Exception {
   String toString() => mensaje;
 }
 
-class Cuenta {
-  Cuenta(this.j);
-  final Map<String, dynamic> j;
-  int get creditos => j['creditos'] ?? 0;
-  bool get suscripcion => j['suscripcion_activa'] == true;
-  int get freeHoy => j['free_restantes_hoy'] ?? 0;
-  int get mensualRestantes => j['mensual_restantes'] ?? 0;
-  bool get puedePro => creditos > 0 || (suscripcion && mensualRestantes > 0);
-}
-
 /// Resultado de /api/analizar.
 class Revision {
   Revision(this.j);
@@ -78,7 +68,7 @@ class Api {
     }
   }
 
-  Map<String, String> get _cab => {'X-Usuario': usuario};
+  Map<String, String> get _cab => {'X-Dispositivo': usuario};
   Uri _u(String ruta) => Uri.parse('$apiUrl$ruta');
 
   Future<http.Response> _peticion(Future<http.Response> peticion) async {
@@ -115,12 +105,16 @@ class Api {
 
   Future<Revision> revision(String id) async => Revision(await _json(http.get(_u('/api/revisiones/$id'), headers: _cab)));
 
-  Future<Cuenta> cuenta() async => Cuenta(await _json(http.get(_u('/api/cuenta'), headers: _cab)));
+  /// Revisiones gratis que quedan hoy en este dispositivo.
+  Future<int> freeRestantesHoy() async =>
+      (await _json(http.get(_u('/api/limites'), headers: _cab)))['free_restantes_hoy'] ?? 0;
 
-  Future<Revision> analizar(Uint8List datos, String nombre, String plan) async {
+  /// [compra]: token de Google Play con el que se ha pagado la revisión completa.
+  Future<Revision> analizar(Uint8List datos, String nombre, String plan, {String? compra}) async {
     final req = http.MultipartRequest('POST', _u('/api/analizar'))
       ..headers.addAll(_cab)
       ..fields['plan'] = plan
+      ..fields['compra'] = compra ?? ''
       ..files.add(http.MultipartFile.fromBytes('archivo', datos, filename: nombre, contentType: _tipo(nombre)));
     return Revision(await _json(req.send().then(http.Response.fromStream)));
   }
@@ -146,14 +140,6 @@ class Api {
     }
     yield* r.stream.transform(utf8.decoder);
   }
-
-  Future<Cuenta> compraGoogle(String producto, String token) async => Cuenta(await _json(http.post(
-      _u('/api/compras/google'),
-      headers: {..._cab, 'Content-Type': 'application/json'},
-      body: jsonEncode({'producto': producto, 'token': token}))));
-
-  Future<Cuenta> canjear(String codigo) async => Cuenta(await _json(http.post(_u('/api/canjear'),
-      headers: {..._cab, 'Content-Type': 'application/json'}, body: jsonEncode({'codigo': codigo}))));
 }
 
 MediaType _tipo(String nombre) {

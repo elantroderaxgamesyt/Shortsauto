@@ -8,8 +8,8 @@
 
 ## 2. Cuenta de desarrollador
 - [ ] Alta en [Google Play Console](https://play.google.com/console) (pago único de 25 $).
-- [ ] Perfil de pagos (para cobrar las compras). Google se queda un 15 % de las suscripciones
-      y del primer millón de ingresos al año.
+- [ ] Perfil de pagos (para cobrar las compras). Google se queda un 15 % del primer millón de
+      ingresos al año.
 
 ## 3. Firma de la app
 ```bash
@@ -26,8 +26,7 @@ base64 -w0 upload.jks   # → secreto ANDROID_KEYSTORE_BASE64
 
 ## 5. Productos
 En *Monetizar → Productos*:
-- [ ] Producto integrado `revision_pro` — 2,99 € — "1 revisión Pro".
-- [ ] Suscripción `pro_mensual` con un plan base mensual de 9,99 €.
+- [ ] Producto integrado (consumible) `revision_pro` — 2,99 € — "Revisión completa de una nómina".
 - [ ] Añadir tu cuenta en *Configuración → Pruebas de licencias* para comprar sin pagar.
 
 ## 6. Verificación de compras en el servidor
@@ -48,7 +47,7 @@ En *Monetizar → Productos*:
 - [ ] **Nunca** pulses tus propios anuncios reales: Google puede cerrar la cuenta. Para probar, usa los de prueba.
 
 ## 8. Cobros
-- Compras Pro: Google Play las cobra y, tras su comisión (15 %), transfiere el resto cada mes a la
+- Revisiones completas: Google Play las cobra y, tras su comisión (15 %), transfiere el resto cada mes a la
   cuenta bancaria del perfil de pagos de Play Console.
 - Anuncios: AdMob paga hacia el día 21 del mes siguiente si se supera el mínimo (unos 70 €).
 - Los costes (IA, servidor) se pagan aparte. Consulta con un gestor el alta como autónomo, el IVA y el ROI.

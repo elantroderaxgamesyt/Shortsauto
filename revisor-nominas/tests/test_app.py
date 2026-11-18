@@ -7,28 +7,24 @@ os.environ["NOMINAS_PAGOS_PRUEBA"] = "1"
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import cuentas  # noqa: E402
+from app import almacen  # noqa: E402
 from app.comprobaciones import basicas, completas  # noqa: E402
 from app.main import app  # noqa: E402
 from app.modelos import DatosNomina  # noqa: E402
 
 c = TestClient(app)
 PDF = ("nomina.pdf", b"%PDF-1.4 demo", "application/pdf")
-U1 = {"X-Usuario": "usuario-de-prueba-0001"}
-U2 = {"X-Usuario": "usuario-de-prueba-0002"}
+U1 = {"X-Dispositivo": "dispositivo-prueba-0001"}
+U2 = {"X-Dispositivo": "dispositivo-prueba-0002"}
 
 
 @pytest.fixture(autouse=True)
 def base_limpia(tmp_path):
-    cuentas.reiniciar(str(tmp_path / "t.db"))
+    almacen.reiniciar(str(tmp_path / "t.db"))
 
 
-def analizar(plan, h=U1, archivo=PDF):
-    return c.post("/api/analizar", files={"archivo": archivo}, data={"plan": plan}, headers=h)
-
-
-def comprar(producto, token, h=U1):
-    return c.post("/api/compras/google", json={"producto": producto, "token": token}, headers=h)
+def analizar(plan, h=U1, archivo=PDF, compra=""):
+    return c.post("/api/analizar", files={"archivo": archivo}, data={"plan": plan, "compra": compra}, headers=h)
 
 
 def datos(**cambios):
@@ -59,7 +55,7 @@ def test_desempleo_temporal_usa_1_60():
     assert r[0].importe_esperado == 32.0 and r[0].estado == "error"
 
 
-# ---- Revisiones ----
+# ---- Revisiones gratis ----
 
 def test_free_demo():
     j = analizar("free").json()
@@ -71,6 +67,7 @@ def test_free_limite_diario():
     for _ in range(3):
         assert analizar("free").status_code == 200
     assert analizar("free").status_code == 402
+    assert c.get("/api/limites", headers=U1).json()["free_restantes_hoy"] == 0
     assert analizar("free", U2).status_code == 200
 
 
@@ -82,85 +79,63 @@ def test_formato_por_extension():
     assert analizar("free", archivo=("n.pdf", b"%PDF", "application/octet-stream")).status_code == 200
 
 
-def test_sin_cabecera_usuario():
+def test_sin_cabecera_dispositivo():
     assert c.post("/api/analizar", files={"archivo": PDF}).status_code == 422
-    assert c.get("/api/cuenta", headers={"X-Usuario": "corto"}).status_code == 400
+    assert c.get("/api/limites", headers={"X-Dispositivo": "corto"}).status_code == 400
 
 
-# ---- Pro y pagos ----
+def test_ya_no_hay_cuentas_ni_suscripcion():
+    assert c.get("/api/cuenta", headers=U1).status_code == 404
+    assert c.post("/api/compras/google", json={}, headers=U1).status_code == 404
+    assert c.post("/api/canjear", json={}, headers=U1).status_code == 404
 
-def test_pro_sin_saldo():
+
+# ---- Revisión completa: pago por revisión ----
+
+def test_pro_sin_pago():
     assert analizar("pro").status_code == 402
 
 
-def test_pro_chat_ilimitado():
-    comprar("revision_pro", "prueba-chat")
-    rid = analizar("pro").json()["id"]
-    h = [{"role": "user", "content": "q"}]
-    for _ in range(5):
-        assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 200
-
-
-def test_pro_resumen_reclamacion():
-    comprar("revision_pro", "prueba-rec")
-    r = analizar("pro").json()["informe"]["reclamacion"]
-    assert r["procede"] and r["total_reclamado"] == 0.49 and r["texto"]
-
-
-def test_revision_pro_consume_credito():
-    assert comprar("revision_pro", "prueba-1").json()["creditos"] == 1
-    j = analizar("pro").json()
+def test_pro_con_compra():
+    r = analizar("pro", compra="prueba-1")
+    assert r.status_code == 200
+    j = r.json()
+    assert j["plan"] == "pro"
     assert any(x["estado"] == "error" and "MEI" in x["concepto"] for x in j["calculos"])
-    assert j["cuenta"]["creditos"] == 0
-    assert analizar("pro").status_code == 402
+    assert j["informe"]["reclamacion"]["procede"]
 
 
-def test_token_no_se_aplica_dos_veces():
-    comprar("revision_pro", "prueba-x")
-    assert comprar("revision_pro", "prueba-x").json()["creditos"] == 1
-    assert comprar("revision_pro", "prueba-x", U2).json()["creditos"] == 0
+def test_compra_no_se_reutiliza():
+    assert analizar("pro", compra="prueba-2").status_code == 200
+    assert analizar("pro", compra="prueba-2").status_code == 409
+    assert analizar("pro", U2, compra="prueba-2").status_code == 409
 
 
-def test_error_de_analisis_no_cobra(monkeypatch):
+def test_compra_falsa():
+    assert analizar("pro", compra="token-inventado").status_code == 402
+
+
+def test_error_de_analisis_no_gasta_la_compra(monkeypatch):
     from app import ia
-    comprar("revision_pro", "prueba-2")
 
     def falla(*a):
         raise ia.RechazoIA("x")
     monkeypatch.setattr(ia, "analizar", falla)
-    assert analizar("pro").status_code == 422
-    assert c.get("/api/cuenta", headers=U1).json()["creditos"] == 1
+    assert analizar("pro", compra="prueba-3").status_code == 422
+    monkeypatch.undo()
+    assert analizar("pro", compra="prueba-3").status_code == 200  # se puede reintentar
 
 
-def test_suscripcion_mensual():
-    r = comprar("pro_mensual", "prueba-sub").json()
-    assert r["suscripcion_activa"] and r["mensual_restantes"] == 30
-    assert analizar("pro").status_code == 200
-    assert c.get("/api/cuenta", headers=U1).json()["mensual_restantes"] == 29
-
-
-def test_suscripcion_se_restaura_en_otro_dispositivo():
-    comprar("pro_mensual", "prueba-sub")
-    assert comprar("pro_mensual", "prueba-sub", U2).json()["suscripcion_activa"]
-    assert not c.get("/api/cuenta", headers=U1).json()["suscripcion_activa"]
-
-
-def test_token_falso_sin_google():
-    assert comprar("revision_pro", "token-inventado").status_code == 400
-
-
-def test_codigo_canje():
-    cod = cuentas.crear_codigo(creditos=2)
-    assert c.post("/api/canjear", json={"codigo": cod.lower()}, headers=U1).json()["creditos"] == 2
-    assert c.post("/api/canjear", json={"codigo": cod}, headers=U2).status_code == 400
+def test_pro_no_gasta_revisiones_gratis():
+    analizar("pro", compra="prueba-4")
+    assert c.get("/api/limites", headers=U1).json()["free_restantes_hoy"] == 3
 
 
 # ---- Historial ----
 
 def test_historial():
     a = analizar("free").json()
-    comprar("revision_pro", "prueba-h")
-    b = analizar("pro").json()
+    b = analizar("pro", compra="prueba-h").json()
     lista = c.get("/api/revisiones", headers=U1).json()
     assert [x["id"] for x in lista] == [b["id"], a["id"]]
     assert lista[0]["plan"] == "pro" and lista[0]["veredicto"] == "revisar" and lista[0]["liquido"] == 1997.23
@@ -177,6 +152,13 @@ def test_limite_chat_free():
     h = [{"role": "user", "content": "q"}]
     assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 200
     assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 402
+
+
+def test_pro_chat_ilimitado():
+    rid = analizar("pro", compra="prueba-chat").json()["id"]
+    h = [{"role": "user", "content": "q"}]
+    for _ in range(5):
+        assert c.post("/api/chat", json={"revision": rid, "historial": h}, headers=U1).status_code == 200
 
 
 def test_chat_revision_ajena():

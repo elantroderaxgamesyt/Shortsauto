@@ -24,10 +24,8 @@ PLANES = {
     "pro": Plan("pro", modelo=MODELO_PRO, esfuerzo="high", max_puntos=0, preguntas_chat=0, comprobaciones="completas"),
 }
 
-# Productos de Google Play (créalos con estos mismos IDs en Play Console).
-PRODUCTO_REVISION = "revision_pro"   # consumible, 2,99 €: +1 revisión Pro
-PRODUCTO_MENSUAL = "pro_mensual"     # suscripción, 9,99 €/mes
+# Producto de Google Play (créalo con este mismo id en Play Console).
+PRODUCTO_REVISION = "revision_pro"   # consumible, 2,99 €: una revisión completa
 
-# Uso justo: cada revisión cuesta dinero en IA.
+# Uso justo: cada revisión gratis cuesta dinero en IA.
 FREE_POR_DIA = int(os.getenv("NOMINAS_FREE_POR_DIA", "3"))
-MENSUAL_POR_MES = int(os.getenv("NOMINAS_MENSUAL_POR_MES", "30"))

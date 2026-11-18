@@ -17,13 +17,14 @@ revisor-nominas/
 La clave de la IA **no puede ir dentro de la app** (cualquiera podría sacarla del APK), por eso
 la app habla con el servidor y es el servidor quien llama a la IA y verifica los pagos.
 
-## Free y Pro
+## Revisión básica (gratis) y completa (2,99 €)
 
-Una sola app gratuita; Pro se desbloquea con compra dentro de la app.
+Una sola app gratuita, **sin cuentas ni registro y sin suscripciones**. La revisión completa se
+paga cada vez que se hace (2,99 €, compra dentro de la app).
 
-| | Free | Pro |
+| | Básica | Completa |
 |---|---|---|
-| Precio | Gratis (3 revisiones/día) | **2,99 € por revisión** o **9,99 €/mes** (hasta 30 revisiones) |
+| Precio | Gratis (3 revisiones/día) | **2,99 € por revisión** |
 | Informe | Veredicto, resumen y 5 puntos | Revisión concepto a concepto |
 | Cálculos que rehace la app | Sumas y líquido | + cada cotización a la SS e IRPF |
 | Explicación de cada línea | — | ✅ |
@@ -31,13 +32,19 @@ Una sola app gratuita; Pro se desbloquea con compra dentro de la app.
 | Preguntas para RRHH | — | ✅ |
 | Preguntas a Nora | 1 | Ilimitadas |
 | Informe en PDF | — | ✅ |
-| Anuncios (sólo Android) | Al abrir la app (máx. 1 cada 4 h) y banner en Inicio / Mis revisiones | Sin anuncios |
 
-- Android: pago con Google Play (`revision_pro` consumible, `pro_mensual` suscripción).
-  El servidor verifica cada compra con Google antes de dar saldo.
-- Windows: de momento Pro se activa con **códigos de canje** (`python -m app.admin codigo --creditos 1`).
-  Pendiente: pago en Windows (Microsoft Store o Stripe).
-- Una revisión Pro sólo se cobra si el análisis sale bien.
+Anuncios (sólo Android): al abrir la app (máx. 1 cada 4 h) y un banner en Inicio y Mis revisiones.
+Nunca dentro del informe.
+
+Cómo funciona el pago (`app_movil/lib/pagos.dart`, `app/google_play.py`):
+1. El usuario elige la revisión completa y paga con Google Play (producto consumible `revision_pro`).
+2. La app manda la nómina y el token de la compra; el servidor lo verifica con Google.
+3. Si el análisis sale bien, la compra se consume y queda registrada: no vale para otra revisión.
+   Si falla, el pago se queda guardado en el móvil y se usa en el siguiente intento.
+
+Sin cuentas: cada instalación manda un identificador anónimo (`X-Dispositivo`) que sólo sirve para el
+límite diario gratis, el historial y el chat. Windows: de momento sólo revisión básica (no hay Google
+Play); pendiente decidir pago (Microsoft Store o Stripe).
 
 Anuncios: Google AdMob (`app_movil/lib/anuncios.dart`). Antes de cargar ninguno se pide el
 consentimiento del RGPD con el formulario oficial de Google. Nunca salen en el informe ni la primera

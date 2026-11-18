@@ -4,11 +4,9 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'compras.dart';
 import 'config.dart';
 
-/// Anuncios de Google AdMob. Sólo en Android y sólo para usuarios Free:
-/// quien tiene la suscripción o revisiones completas no ve ninguno.
+/// Anuncios de Google AdMob. Sólo en Android, y nunca dentro del informe.
 ///
 /// - Al abrir la app: un anuncio a pantalla completa, como mucho una vez cada
 ///   [horasEntreAperturas] y nunca la primera vez que se abre la app.
@@ -28,7 +26,7 @@ class Anuncios extends ChangeNotifier {
   bool get disponibles => anunciosActivos;
 
   /// ¿Hay que enseñar anuncios ahora mismo?
-  bool get mostrar => _listo && !(Tienda.yo.cuenta?.puedePro ?? false);
+  bool get mostrar => _listo;
 
   Future<void> iniciar() async {
     if (!disponibles) return;
@@ -41,7 +39,6 @@ class Anuncios extends ChangeNotifier {
   }
 
   Future<void> _iniciar() async {
-    Tienda.yo.addListener(notifyListeners); // si compra Pro, los banners desaparecen al momento
 
     // 1) Consentimiento (RGPD). Si falla, seguimos con lo que diga canRequestAds.
     final consentimiento = Completer<void>();
@@ -74,8 +71,6 @@ class Anuncios extends ChangeNotifier {
     final ultimo = prefs.getInt('ultimo_anuncio_apertura') ?? 0;
     if (ahora - ultimo < horasEntreAperturas * 3600 * 1000) return;
 
-    await Tienda.yo.refrescarCuenta();
-    if (!mostrar) return;
 
     final cargado = Completer<AppOpenAd?>();
     AppOpenAd.load(
@@ -97,7 +92,7 @@ class Anuncios extends ChangeNotifier {
     await ad.show();
   }
 
-  /// Para el apartado "Privacidad de los anuncios" de Mi cuenta.
+  /// Para el apartado "Privacidad de los anuncios" de la pantalla de Información.
   Future<void> abrirPrivacidad() => ConsentForm.showPrivacyOptionsForm((_) {});
 }
 

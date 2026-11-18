@@ -1,7 +1,7 @@
-"""Verificación de compras de Google Play en el servidor.
+"""Verificación en el servidor de las compras de Google Play.
 
-Nunca te fíes de lo que diga la app: el servidor pregunta a Google si el token
-de compra es real antes de dar saldo.
+Nunca te fíes de lo que diga la app: antes de hacer una revisión completa, el servidor
+pregunta a Google si el token de compra es real.
 
 Configuración:
   GOOGLE_PLAY_PAQUETE        id de la app (p. ej. es.revisornominas.app)
@@ -12,24 +12,14 @@ Configuración:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
-from datetime import datetime, timedelta
 
-from .cuentas import ahora
-from .planes import PRODUCTO_MENSUAL, PRODUCTO_REVISION
+from .planes import PRODUCTO_REVISION
 
 API = "https://androidpublisher.googleapis.com/androidpublisher/v3/applications"
 
 
 class CompraNoValida(Exception):
     pass
-
-
-@dataclass
-class Verificada:
-    producto: str
-    creditos: int = 0
-    hasta: datetime | None = None
 
 
 _sesion = None
@@ -49,37 +39,14 @@ def _http():
     return _sesion
 
 
-def _get(url: str) -> dict:
-    r = _http().get(url, timeout=20)
+def verificar_revision(token: str) -> None:
+    """Comprueba que el token corresponde a una compra pagada de la revisión completa."""
+    if os.getenv("NOMINAS_PAGOS_PRUEBA") == "1" and token.startswith("prueba-"):
+        return
+    paquete = os.getenv("GOOGLE_PLAY_PAQUETE", "es.revisornominas.app")
+    r = _http().get(f"{API}/{paquete}/purchases/products/{PRODUCTO_REVISION}/tokens/{token}", timeout=20)
     if r.status_code in (400, 404, 410):
         raise CompraNoValida("Google no reconoce esta compra.")
     r.raise_for_status()
-    return r.json()
-
-
-def verificar(producto: str, token: str) -> Verificada:
-    if os.getenv("NOMINAS_PAGOS_PRUEBA") == "1" and token.startswith("prueba-"):
-        if producto == PRODUCTO_REVISION:
-            return Verificada(producto, creditos=1)
-        if producto == PRODUCTO_MENSUAL:
-            return Verificada(producto, hasta=ahora() + timedelta(days=30))
-
-    paquete = os.getenv("GOOGLE_PLAY_PAQUETE", "es.revisornominas.app")
-
-    if producto == PRODUCTO_REVISION:
-        d = _get(f"{API}/{paquete}/purchases/products/{producto}/tokens/{token}")
-        if d.get("purchaseState") != 0:  # 0 = comprado, 1 = cancelado, 2 = pendiente
-            raise CompraNoValida("La compra no está completada.")
-        return Verificada(producto, creditos=1)
-
-    if producto == PRODUCTO_MENSUAL:
-        d = _get(f"{API}/{paquete}/purchases/subscriptionsv2/tokens/{token}")
-        if d.get("subscriptionState") not in ("SUBSCRIPTION_STATE_ACTIVE", "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"):
-            raise CompraNoValida("La suscripción no está activa.")
-        fechas = [li["expiryTime"] for li in d.get("lineItems", []) if li.get("productId") == producto]
-        if not fechas:
-            raise CompraNoValida("La suscripción no corresponde a este producto.")
-        hasta = max(datetime.fromisoformat(f.replace("Z", "+00:00")) for f in fechas)
-        return Verificada(producto, hasta=hasta)
-
-    raise CompraNoValida("Producto desconocido.")
+    if r.json().get("purchaseState") != 0:  # 0 = pagada, 1 = cancelada, 2 = pendiente
+        raise CompraNoValida("El pago no está completado.")

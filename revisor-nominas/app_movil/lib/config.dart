@@ -11,13 +11,15 @@ String get apiUrl {
   return 'http://localhost:8000';
 }
 
-/// Las compras con Google Play sólo existen en Android.
+/// Los pagos con Google Play sólo existen en Android.
 bool get comprasGooglePlay => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-const productoRevision = 'revision_pro'; // 2,99 €
-const productoMensual = 'pro_mensual'; // 9,99 €/mes
+/// Sólo desarrollo: simula el pago (el servidor debe tener NOMINAS_PAGOS_PRUEBA=1).
+///   flutter run --dart-define=PAGOS_PRUEBA=true
+const pagosPrueba = bool.fromEnvironment('PAGOS_PRUEBA');
+
+const productoRevision = 'revision_pro'; // revisión completa, pago por revisión
 const precioRevision = '2,99 €';
-const precioMensual = '9,99 €/mes';
 
 /// Anuncios (Google AdMob): sólo en Android.
 bool get anunciosActivos => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;

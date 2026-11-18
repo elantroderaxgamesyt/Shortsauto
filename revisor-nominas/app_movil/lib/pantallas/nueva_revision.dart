@@ -6,13 +6,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
-import '../compras.dart';
-import '../config.dart';
 import '../estado.dart';
+import '../pagos.dart';
 import '../tema.dart';
 import '../widgets.dart';
 import 'informe.dart';
-import 'tienda.dart';
 
 class Archivo {
   Archivo(this.datos, this.nombre);
@@ -99,14 +97,32 @@ class PantallaPlan extends StatefulWidget {
 class _PantallaPlanState extends State<PantallaPlan> {
   late Archivo archivo = widget.archivo;
   late String plan = widget.plan;
+  int? freeHoy;
+  bool pagando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Api.yo.freeRestantesHoy().then((n) {
+      if (mounted) setState(() => freeHoy = n);
+    }).catchError((_) {});
+  }
 
   Future<void> continuar() async {
-    if (plan == 'pro' && !(Tienda.yo.cuenta?.puedePro ?? false)) {
-      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PantallaTienda()));
-      if (!(Tienda.yo.cuenta?.puedePro ?? false)) return;
+    String? compra;
+    if (plan == 'pro') {
+      // Pago único con Google Play; si ya había uno pagado sin usar, se usa ese.
+      setState(() => pagando = true);
+      compra = await Pagos.yo.pagar();
+      if (!mounted) return;
+      setState(() => pagando = false);
+      if (compra == null) {
+        if (Pagos.yo.error != null) aviso(context, Pagos.yo.error!);
+        return;
+      }
     }
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PantallaAnalizando(archivo, plan)));
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => PantallaAnalizando(archivo, plan, compra: compra)));
   }
 
   @override
@@ -117,10 +133,11 @@ class _PantallaPlanState extends State<PantallaPlan> {
       appBar: AppBar(title: const Text('Nueva revisión')),
       body: SafeArea(
         child: ListenableBuilder(
-          listenable: Tienda.yo,
+          listenable: Pagos.yo,
           builder: (context, _) {
-            final c = Tienda.yo.cuenta;
-            final puedePro = c?.puedePro ?? false;
+            final pagos = Pagos.yo;
+            final yaPagada = pagos.pagoPendiente != null;
+            final freeAgotadas = freeHoy == 0;
             return Column(children: [
               Expanded(
                 child: Pagina(children: [
@@ -153,7 +170,7 @@ class _PantallaPlanState extends State<PantallaPlan> {
                     onTap: () => setState(() => plan = 'free'),
                     titulo: 'Revisión básica',
                     precio: 'Gratis',
-                    nota: c == null ? null : 'Te quedan ${c.freeHoy} hoy',
+                    nota: freeHoy == null ? null : (freeAgotadas ? 'Agotadas por hoy' : 'Te quedan $freeHoy hoy'),
                     ventajas: const [
                       'Veredicto y resumen sencillo',
                       'Los 5 puntos más importantes',
@@ -167,17 +184,18 @@ class _PantallaPlanState extends State<PantallaPlan> {
                     seleccionado: plan == 'pro',
                     onTap: () => setState(() => plan = 'pro'),
                     titulo: 'Revisión completa',
-                    precio: puedePro ? 'Incluida' : precioRevision,
-                    nota: puedePro
-                        ? (c!.suscripcion ? 'Con tu Pro mensual' : 'Tienes ${c.creditos} disponible${c.creditos == 1 ? '' : 's'}')
-                        : 'o $precioMensual',
+                    precio: yaPagada ? 'Ya pagada' : pagos.precio,
+                    nota: yaPagada
+                        ? 'Tienes un pago sin usar'
+                        : pagos.sePuedePagar
+                            ? 'Pago único, sin suscripción'
+                            : 'Disponible en la app de Android',
                     ventajas: [
                       'Revisión concepto a concepto',
                       'Recalcula Seguridad Social e IRPF',
                       'Resumen para la reclamación, listo para enviar',
                       'Preguntas ilimitadas a Nora',
                       'Informe en PDF',
-                      if (anunciosActivos) 'Sin anuncios',
                     ],
                   ),
                 ]),
@@ -190,12 +208,19 @@ class _PantallaPlanState extends State<PantallaPlan> {
                     width: double.infinity,
                     child: FilledButton(
                       style: plan == 'pro' ? FilledButton.styleFrom(backgroundColor: Marca.pro) : null,
-                      onPressed: continuar,
-                      child: Text(plan == 'free'
-                          ? 'Revisar gratis'
-                          : puedePro
-                              ? 'Hacer revisión completa'
-                              : 'Desbloquear revisión completa'),
+                      onPressed: pagando ||
+                              (plan == 'free' && freeAgotadas) ||
+                              (plan == 'pro' && !yaPagada && !pagos.sePuedePagar)
+                          ? null
+                          : continuar,
+                      child: pagando
+                          ? const SizedBox(
+                              width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                          : Text(plan == 'free'
+                              ? (freeAgotadas ? 'Sin revisiones gratis hoy' : 'Revisar gratis')
+                              : yaPagada
+                                  ? 'Hacer revisión completa'
+                                  : 'Pagar ${pagos.precio} y revisar'),
                     ),
                   ),
                 ),
@@ -276,9 +301,10 @@ class _TarjetaPlan extends StatelessWidget {
 // ------------------------------------------------------------------ analizando
 
 class PantallaAnalizando extends StatefulWidget {
-  const PantallaAnalizando(this.archivo, this.plan, {super.key});
+  const PantallaAnalizando(this.archivo, this.plan, {super.key, this.compra});
   final Archivo archivo;
   final String plan;
+  final String? compra; // token del pago de la revisión completa
 
   @override
   State<PantallaAnalizando> createState() => _PantallaAnalizandoState();
@@ -318,9 +344,10 @@ class _PantallaAnalizandoState extends State<PantallaAnalizando> {
       if (paso < pasos.length - 1) setState(() => paso++);
     });
     try {
-      final r = await Api.yo.analizar(widget.archivo.datos, widget.archivo.nombre, widget.plan);
+      final compra = widget.compra;
+      final r = await Api.yo.analizar(widget.archivo.datos, widget.archivo.nombre, widget.plan, compra: compra);
       reloj?.cancel();
-      Tienda.yo.refrescarCuenta();
+      if (compra != null) await Pagos.yo.usada(compra); // ya no vale para otra revisión
       historialCambiado.value++;
       if (!mounted) return;
       setState(() => paso = pasos.length);
@@ -329,7 +356,16 @@ class _PantallaAnalizandoState extends State<PantallaAnalizando> {
       Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PantallaInforme(r, archivo: widget.archivo)));
     } on ErrorApi catch (e) {
       reloj?.cancel();
-      if (mounted) setState(() => error = e.mensaje);
+      final compra = widget.compra;
+      var msg = e.mensaje;
+      if (compra != null) {
+        if (e.codigo == 409) {
+          await Pagos.yo.usada(compra); // el servidor ya la había gastado
+        } else {
+          msg += '\n\nTu pago está guardado: no se te cobrará otra vez al reintentar.';
+        }
+      }
+      if (mounted) setState(() => error = msg);
     }
   }
 
