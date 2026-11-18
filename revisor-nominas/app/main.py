@@ -123,7 +123,6 @@ def _revision_json(rev) -> dict:
         "preguntas_ilimitadas": PLANES[rev["plan"]].preguntas_chat is None,
         "preguntas_disponibles": _preguntas_disponibles(rev),
         "preguntas_por_anuncio": rev["preguntas_extra"] < MAX_PREGUNTAS_ANUNCIO,
-        "pdf_pagado": rev["compra_pdf"] is not None,
     }
 
 
@@ -214,33 +213,3 @@ def admob_recompensa(request: Request):
     if rev:
         almacen.sumar_pregunta_extra(rev["id"], MAX_PREGUNTAS_ANUNCIO, transaccion=p.get("transaction_id"))
     return {"ok": True}  # AdMob sólo necesita un 200
-
-
-# ---------------------------------------------------------------- informe en PDF (0,50 €)
-
-class PeticionPdf(BaseModel):
-    compra: str
-
-
-@app.post("/api/revisiones/{rid}/pdf")
-def comprar_pdf(rid: str, req: PeticionPdf, disp: str = Depends(dispositivo)):
-    """Registra el pago del PDF de una revisión completa. Se paga una vez por informe;
-    la app genera el PDF en el móvil cuando el servidor confirma el pago."""
-    rev = almacen.revision(disp, rid)
-    if not rev:
-        raise HTTPException(404, "Revisión no encontrada.")
-    if rev["plan"] != "pro":
-        raise HTTPException(400, "El informe en PDF es de la revisión completa.")
-    if rev["compra_pdf"] is not None:
-        return {"pdf_pagado": True}
-    if almacen.compra_usada(req.compra):
-        raise HTTPException(409, "Esta compra ya se ha usado.")
-    try:
-        google_play.verificar_pdf(req.compra)
-    except google_play.CompraNoValida as e:
-        raise HTTPException(402, str(e))
-    try:
-        almacen.marcar_pdf_pagado(rid, req.compra)
-    except almacen.CompraUsada as e:
-        raise HTTPException(409, str(e))
-    return {"pdf_pagado": True}

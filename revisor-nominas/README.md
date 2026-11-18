@@ -31,7 +31,7 @@ paga cada vez que se hace (2,99 €, compra dentro de la app).
 | Resumen para la reclamación (qué, cuánto, a quién, plazo y mensaje listo para enviar) | — | ✅ |
 | Preguntas para RRHH | — | ✅ |
 | Preguntas a Nora | 1 por anuncio visto (máx. 5) | 3 sin anuncios + 1 por anuncio visto (máx. 5) |
-| Informe en PDF | — | **+0,50 €** (una vez por informe) |
+| Informe en PDF | — | ✅ |
 
 Anuncios (sólo Android): al abrir la app (máx. 1 cada 4 h) y un banner en Inicio y Mis revisiones.
 Nunca dentro del informe.

@@ -33,9 +33,6 @@ class Revision {
 
   /// ¿Se puede ganar otra pregunta viendo un anuncio? (hay un máximo por revisión)
   bool get preguntasPorAnuncio => j['preguntas_por_anuncio'] == true;
-
-  /// ¿Se ha pagado ya el PDF de este informe? (0,50 €, una vez por informe)
-  bool get pdfPagado => j['pdf_pagado'] == true;
   String? get fecha => j['fecha'];
 }
 
@@ -126,13 +123,6 @@ class Api {
   Future<int> recompensa(String revision) async => modoDemo
       ? _enDemo(() async => _demo.recompensa(revision), 429)
       : (await _json(http.post(_u('/api/revisiones/$revision/recompensa'), headers: _cab)))['preguntas_disponibles'] ?? 0;
-
-  /// Registra en el servidor el pago del PDF de una revisión completa.
-  Future<void> comprarPdf(String revision, String compra) async {
-    if (modoDemo) return _enDemo(() async => _demo.comprarPdf(revision), 400);
-    await _json(http.post(_u('/api/revisiones/$revision/pdf'),
-        headers: {..._cab, 'Content-Type': 'application/json'}, body: jsonEncode({'compra': compra})));
-  }
 
   Future<Revision> revision(String id) async => modoDemo
       ? Revision(_demo.revision(id) ?? (throw ErrorApi('Revisión no encontrada.', 404)))

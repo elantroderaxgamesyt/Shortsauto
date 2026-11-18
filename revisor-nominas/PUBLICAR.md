@@ -27,7 +27,6 @@ base64 -w0 upload.jks   # → secreto ANDROID_KEYSTORE_BASE64
 ## 5. Productos
 En *Monetizar → Productos*:
 - [ ] Producto integrado (consumible) `revision_pro` — 2,99 € — "Revisión completa de una nómina".
-- [ ] Producto integrado (consumible) `informe_pdf` — 0,50 € — "Informe en PDF de una revisión completa".
 - [ ] Añadir tu cuenta en *Configuración → Pruebas de licencias* para comprar sin pagar.
 
 ## 6. Verificación de compras en el servidor

@@ -246,34 +246,3 @@ def test_modelos_por_plan():
     assert PLANES["pro"].modelo == "claude-opus-5-5"
     assert _respaldo("claude-haiku-5-5") == {}  # Haiku no admite modelo de respaldo
     assert _respaldo("claude-opus-5-5")["fallbacks"] == "default"
-
-
-# ---- Informe en PDF (0,50 €) ----
-
-def pdf(rid, compra, h=U1):
-    return c.post(f"/api/revisiones/{rid}/pdf", json={"compra": compra}, headers=h)
-
-
-def test_pdf_se_paga_una_vez_por_informe():
-    j = analizar("pro", compra="prueba-rev").json()
-    assert j["pdf_pagado"] is False
-    assert pdf(j["id"], "token-falso").status_code == 402
-    assert pdf(j["id"], "prueba-pdf").json()["pdf_pagado"]
-    assert c.get(f"/api/revisiones/{j['id']}", headers=U1).json()["pdf_pagado"]
-    assert pdf(j["id"], "prueba-otro").json()["pdf_pagado"]  # ya pagado: no cobra otra vez
-
-
-def test_pdf_compra_no_se_reutiliza():
-    a = analizar("pro", compra="prueba-a").json()["id"]
-    b = analizar("pro", compra="prueba-b").json()["id"]
-    assert pdf(a, "prueba-pdf1").status_code == 200
-    assert pdf(b, "prueba-pdf1").status_code == 409
-    assert pdf(b, "prueba-a").status_code == 409             # el token de la revisión tampoco vale
-
-
-def test_pdf_solo_en_completa_y_propia():
-    f = analizar("free").json()["id"]
-    assert pdf(f, "prueba-x").status_code == 400
-    p = analizar("pro", compra="prueba-c").json()["id"]
-    assert pdf(p, "prueba-y", U2).status_code == 404
-
