@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../config.dart';
 import '../tema.dart';
 import '../widgets.dart';
 import 'info.dart';
@@ -32,6 +33,23 @@ class PantallaInicio extends StatelessWidget {
           ),
         ]),
         const Hueco(20),
+        if (modoDemo) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Estilo.de('aviso').fondo(context), borderRadius: BorderRadius.circular(12)),
+            child: Row(children: [
+              Icon(Icons.science_outlined, color: Estilo.de('aviso').texto(context)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Modo demo: la app funciona sin servidor con un informe de ejemplo y los pagos simulados.',
+                  style: TextStyle(color: Estilo.de('aviso').texto(context)),
+                ),
+              ),
+            ]),
+          ),
+          const Hueco(12),
+        ],
         const _Portada(),
         const Hueco(24),
         Text('Cómo funciona', style: t.textTheme.titleMedium),

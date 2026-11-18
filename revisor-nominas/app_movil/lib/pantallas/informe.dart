@@ -46,7 +46,7 @@ class PantallaInforme extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: Estilo.de('aviso').fondo(context), borderRadius: BorderRadius.circular(12)),
-              child: Text('Modo demo: el servidor no tiene clave de IA y este es un informe de ejemplo.',
+              child: Text('Modo demo: este es un informe de ejemplo, no el análisis de tu nómina.',
                   style: TextStyle(color: Estilo.de('aviso').texto(context))),
             ),
             const Hueco(12),

@@ -1,15 +1,12 @@
 import 'package:flutter/foundation.dart';
 
-/// Dirección del servidor. En producción se pasa al compilar:
+/// Dirección del servidor. Se pasa al compilar:
 ///   flutter build appbundle --dart-define=API_URL=https://api.tudominio.es
-String get apiUrl {
-  const definida = String.fromEnvironment('API_URL');
-  if (definida.isNotEmpty) return definida;
-  if (kIsWeb) return '';
-  // El emulador de Android ve el ordenador como 10.0.2.2.
-  if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:8000';
-  return 'http://localhost:8000';
-}
+///   (emulador de Android con el servidor en el ordenador: API_URL=http://10.0.2.2:8000)
+/// Sin ella, la app funciona en **modo demo**: sin servidor, con un informe de ejemplo.
+const apiUrl = String.fromEnvironment('API_URL');
+
+bool get modoDemo => apiUrl.isEmpty;
 
 /// Los pagos con Google Play sólo existen en Android.
 bool get comprasGooglePlay => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;

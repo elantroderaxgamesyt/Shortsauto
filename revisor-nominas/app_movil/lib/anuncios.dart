@@ -93,14 +93,17 @@ class Anuncios extends ChangeNotifier {
   }
 
   /// ¿Se pueden ver anuncios con recompensa en este dispositivo?
-  bool get recompensaDisponible => simularAnuncios || _listo;
+  bool get recompensaDisponible => _simular || _listo;
+
+  /// En web/Windows no hay AdMob: en desarrollo o modo demo se simula el anuncio.
+  bool get _simular => simularAnuncios || (modoDemo && !anunciosActivos);
 
   /// Enseña un anuncio con recompensa. Devuelve true si el usuario lo ha visto entero.
   ///
   /// [dispositivo] y [revision] viajan a AdMob para que, con la verificación en el servidor,
   /// Google avise a nuestro servidor de qué revisión gana la pregunta.
   Future<bool> verAnuncioRecompensa({required String dispositivo, required String revision}) async {
-    if (simularAnuncios) {
+    if (_simular) {
       await Future.delayed(const Duration(seconds: 1));
       return true;
     }

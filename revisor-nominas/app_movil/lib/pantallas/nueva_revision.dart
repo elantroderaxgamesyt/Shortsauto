@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../config.dart';
 import '../estado.dart';
 import '../pagos.dart';
 import '../tema.dart';
@@ -37,29 +38,41 @@ Future<Archivo?> elegirArchivo(BuildContext context) async {
     builder: (context) {
       final t = Theme.of(context);
       Widget opcion(String id, IconData ic, String titulo, String sub) => ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-            leading: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                  color: t.colorScheme.primary.withValues(alpha: .1), borderRadius: BorderRadius.circular(12)),
-              child: Icon(ic, color: t.colorScheme.primary),
-            ),
-            title: Text(titulo, style: t.textTheme.titleSmall),
-            subtitle: Text(sub),
-            onTap: () => Navigator.pop(context, id),
-          );
-      return SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: Text('¿Cómo quieres subir tu nómina?', style: t.textTheme.titleMedium),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: t.colorScheme.primary.withValues(alpha: .1),
+            borderRadius: BorderRadius.circular(12),
           ),
-          if (_hayCamara) opcion('camara', Icons.photo_camera_outlined, 'Hacer una foto', 'Con buena luz y la nómina entera'),
-          opcion('pdf', Icons.picture_as_pdf_outlined, 'Subir PDF', 'La que te envía tu empresa o descargas del portal'),
-          opcion('imagen', Icons.image_outlined, 'Elegir una imagen', 'Una foto o captura que ya tengas'),
-          const Hueco(12),
-        ]),
+          child: Icon(ic, color: t.colorScheme.primary),
+        ),
+        title: Text(titulo, style: t.textTheme.titleSmall),
+        subtitle: Text(sub),
+        onTap: () => Navigator.pop(context, id),
+      );
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text('¿Cómo quieres subir tu nómina?', style: t.textTheme.titleMedium),
+            ),
+            if (_hayCamara)
+              opcion('camara', Icons.photo_camera_outlined, 'Hacer una foto', 'Con buena luz y la nómina entera'),
+            opcion(
+              'pdf',
+              Icons.picture_as_pdf_outlined,
+              'Subir PDF',
+              'La que te envía tu empresa o descargas del portal',
+            ),
+            opcion('imagen', Icons.image_outlined, 'Elegir una imagen', 'Una foto o captura que ya tengas'),
+            const Hueco(12),
+          ],
+        ),
       );
     },
   );
@@ -103,9 +116,12 @@ class _PantallaPlanState extends State<PantallaPlan> {
   @override
   void initState() {
     super.initState();
-    Api.yo.freeRestantesHoy().then((n) {
-      if (mounted) setState(() => freeHoy = n);
-    }).catchError((_) {});
+    Api.yo
+        .freeRestantesHoy()
+        .then((n) {
+          if (mounted) setState(() => freeHoy = n);
+        })
+        .catchError((_) {});
   }
 
   Future<void> continuar() async {
@@ -138,94 +154,116 @@ class _PantallaPlanState extends State<PantallaPlan> {
             final pagos = Pagos.yo;
             final yaPagada = pagos.pagoPendiente != null;
             final freeAgotadas = freeHoy == 0;
-            return Column(children: [
-              Expanded(
-                child: Pagina(children: [
-                  Card(
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
-                      leading: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(color: tonos.tenue, borderRadius: BorderRadius.circular(10)),
-                        child: Icon(archivo.esPdf ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
-                            color: archivo.esPdf ? Marca.error : t.colorScheme.primary),
+            return Column(
+              children: [
+                Expanded(
+                  child: Pagina(
+                    children: [
+                      Card(
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(color: tonos.tenue, borderRadius: BorderRadius.circular(10)),
+                            child: Icon(
+                              archivo.esPdf ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
+                              color: archivo.esPdf ? Marca.error : t.colorScheme.primary,
+                            ),
+                          ),
+                          title: Text(
+                            archivo.nombre,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.textTheme.titleSmall,
+                          ),
+                          subtitle: Text(archivo.tamano),
+                          trailing: TextButton(
+                            onPressed: () async {
+                              final nuevo = await elegirArchivo(context);
+                              if (nuevo != null) setState(() => archivo = nuevo);
+                            },
+                            child: const Text('Cambiar'),
+                          ),
+                        ),
                       ),
-                      title: Text(archivo.nombre, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleSmall),
-                      subtitle: Text(archivo.tamano),
-                      trailing: TextButton(
-                        onPressed: () async {
-                          final nuevo = await elegirArchivo(context);
-                          if (nuevo != null) setState(() => archivo = nuevo);
-                        },
-                        child: const Text('Cambiar'),
+                      const Hueco(24),
+                      Text('Elige el tipo de revisión', style: t.textTheme.titleMedium),
+                      const Hueco(12),
+                      _TarjetaPlan(
+                        seleccionado: plan == 'free',
+                        onTap: () => setState(() => plan = 'free'),
+                        titulo: 'Revisión básica',
+                        precio: 'Gratis',
+                        nota: freeHoy == null ? null : (freeAgotadas ? 'Agotadas por hoy' : 'Te quedan $freeHoy hoy'),
+                        ventajas: const [
+                          'Veredicto y resumen sencillo',
+                          'Los 5 puntos más importantes',
+                          'Comprobación de sumas y líquido',
+                          'Preguntas a Nora viendo un anuncio',
+                        ],
                       ),
-                    ),
-                  ),
-                  const Hueco(24),
-                  Text('Elige el tipo de revisión', style: t.textTheme.titleMedium),
-                  const Hueco(12),
-                  _TarjetaPlan(
-                    seleccionado: plan == 'free',
-                    onTap: () => setState(() => plan = 'free'),
-                    titulo: 'Revisión básica',
-                    precio: 'Gratis',
-                    nota: freeHoy == null ? null : (freeAgotadas ? 'Agotadas por hoy' : 'Te quedan $freeHoy hoy'),
-                    ventajas: const [
-                      'Veredicto y resumen sencillo',
-                      'Los 5 puntos más importantes',
-                      'Comprobación de sumas y líquido',
-                      'Preguntas a Nora viendo un anuncio',
-                    ],
-                  ),
-                  const Hueco(12),
-                  _TarjetaPlan(
-                    pro: true,
-                    seleccionado: plan == 'pro',
-                    onTap: () => setState(() => plan = 'pro'),
-                    titulo: 'Revisión completa',
-                    precio: yaPagada ? 'Ya pagada' : pagos.precio,
-                    nota: yaPagada
-                        ? 'Tienes un pago sin usar'
-                        : pagos.sePuedePagar
+                      const Hueco(12),
+                      _TarjetaPlan(
+                        pro: true,
+                        seleccionado: plan == 'pro',
+                        onTap: () => setState(() => plan = 'pro'),
+                        titulo: 'Revisión completa',
+                        precio: yaPagada ? 'Ya pagada' : pagos.precio,
+                        nota: yaPagada
+                            ? 'Tienes un pago sin usar'
+                            : modoDemo
+                            ? 'Modo demo: pago simulado'
+                            : pagos.sePuedePagar
                             ? 'Pago único, sin suscripción'
                             : 'Disponible en la app de Android',
-                    ventajas: [
-                      'Revisión concepto a concepto',
-                      'Recalcula Seguridad Social e IRPF',
-                      'Resumen para la reclamación, listo para enviar',
-                      '3 preguntas a Nora sin anuncios',
-                      'Informe en PDF',
+                        ventajas: [
+                          'Revisión concepto a concepto',
+                          'Recalcula Seguridad Social e IRPF',
+                          'Resumen para la reclamación, listo para enviar',
+                          '3 preguntas a Nora sin anuncios',
+                          'Informe en PDF',
+                        ],
+                      ),
                     ],
                   ),
-                ]),
-              ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                decoration: BoxDecoration(color: tonos.tarjeta, border: Border(top: BorderSide(color: tonos.borde))),
-                child: Centrado(
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      style: plan == 'pro' ? FilledButton.styleFrom(backgroundColor: Marca.pro) : null,
-                      onPressed: pagando ||
-                              (plan == 'free' && freeAgotadas) ||
-                              (plan == 'pro' && !yaPagada && !pagos.sePuedePagar)
-                          ? null
-                          : continuar,
-                      child: pagando
-                          ? const SizedBox(
-                              width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                          : Text(plan == 'free'
-                              ? (freeAgotadas ? 'Sin revisiones gratis hoy' : 'Revisar gratis')
-                              : yaPagada
-                                  ? 'Hacer revisión completa'
-                                  : 'Pagar ${pagos.precio} y revisar'),
+                ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  decoration: BoxDecoration(
+                    color: tonos.tarjeta,
+                    border: Border(top: BorderSide(color: tonos.borde)),
+                  ),
+                  child: Centrado(
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: plan == 'pro' ? FilledButton.styleFrom(backgroundColor: Marca.pro) : null,
+                        onPressed:
+                            pagando ||
+                                (plan == 'free' && freeAgotadas) ||
+                                (plan == 'pro' && !yaPagada && !pagos.sePuedePagar)
+                            ? null
+                            : continuar,
+                        child: pagando
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                              )
+                            : Text(
+                                plan == 'free'
+                                    ? (freeAgotadas ? 'Sin revisiones gratis hoy' : 'Revisar gratis')
+                                    : yaPagada
+                                    ? 'Hacer revisión completa'
+                                    : 'Pagar ${pagos.precio} y revisar',
+                              ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ]);
+              ],
+            );
           },
         ),
       ),
@@ -265,33 +303,53 @@ class _TarjetaPlan extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Icon(seleccionado ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                  color: seleccionado ? color : tonos.suave),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, children: [
-                  Text(titulo, style: t.textTheme.titleMedium),
-                  if (pro) const InsigniaPro(),
-                ]),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    seleccionado ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                    color: seleccionado ? color : tonos.suave,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      children: [
+                        Text(titulo, style: t.textTheme.titleMedium),
+                        if (pro) const InsigniaPro(),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        precio,
+                        style: t.textTheme.titleMedium?.copyWith(color: color, fontWeight: FontWeight.w700),
+                      ),
+                      if (nota != null) Text(nota!, style: t.textTheme.bodySmall?.copyWith(color: tonos.suave)),
+                    ],
+                  ),
+                ],
               ),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(precio, style: t.textTheme.titleMedium?.copyWith(color: color, fontWeight: FontWeight.w700)),
-                if (nota != null) Text(nota!, style: t.textTheme.bodySmall?.copyWith(color: tonos.suave)),
-              ]),
-            ]),
-            const Hueco(12),
-            for (final v in ventajas)
-              Padding(
-                padding: const EdgeInsets.only(left: 34, bottom: 6),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Icon(Icons.check_rounded, size: 18, color: color),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(v, style: t.textTheme.bodyMedium)),
-                ]),
-              ),
-          ]),
+              const Hueco(12),
+              for (final v in ventajas)
+                Padding(
+                  padding: const EdgeInsets.only(left: 34, bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.check_rounded, size: 18, color: color),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(v, style: t.textTheme.bodyMedium)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -353,7 +411,8 @@ class _PantallaAnalizandoState extends State<PantallaAnalizando> {
       setState(() => paso = pasos.length);
       await Future.delayed(const Duration(milliseconds: 350));
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PantallaInforme(r, archivo: widget.archivo)));
+      Navigator.of(context)
+          .pushReplacement(MaterialPageRoute(builder: (_) => PantallaInforme(r, archivo: widget.archivo)));
     } on ErrorApi catch (e) {
       reloj?.cancel();
       final compra = widget.compra;
@@ -382,62 +441,83 @@ class _PantallaAnalizandoState extends State<PantallaAnalizando> {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: error != null
-                ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.cloud_off_rounded, size: 56, color: tonos.suave),
-                    const Hueco(16),
-                    Text('No se ha podido revisar', style: t.textTheme.titleLarge, textAlign: TextAlign.center),
-                    const Hueco(8),
-                    Text(error!, textAlign: TextAlign.center, style: t.textTheme.bodyMedium?.copyWith(color: tonos.suave)),
-                    const Hueco(24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(onPressed: _lanzar, child: const Text('Reintentar')),
-                    ),
-                    const Hueco(8),
-                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Volver')),
-                  ])
-                : Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                          gradient: pro ? Marca.degradadoPro : Marca.degradado, borderRadius: BorderRadius.circular(18)),
-                      child: const Padding(
-                        padding: EdgeInsets.all(18),
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.cloud_off_rounded, size: 56, color: tonos.suave),
+                      const Hueco(16),
+                      Text('No se ha podido revisar', style: t.textTheme.titleLarge, textAlign: TextAlign.center),
+                      const Hueco(8),
+                      Text(
+                        error!,
+                        textAlign: TextAlign.center,
+                        style: t.textTheme.bodyMedium?.copyWith(color: tonos.suave),
                       ),
-                    ),
-                    const Hueco(24),
-                    Text('Nora está revisando tu nómina', style: t.textTheme.titleLarge),
-                    const Hueco(6),
-                    Text(pro ? 'La revisión completa tarda alrededor de un minuto.' : 'Tardará unos segundos.',
-                        style: t.textTheme.bodyMedium?.copyWith(color: tonos.suave)),
-                    const Hueco(28),
-                    for (final (i, txt) in pasos.indexed)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: i < paso
-                                ? const Icon(Icons.check_circle_rounded, color: Marca.ok)
-                                : i == paso
+                      const Hueco(24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(onPressed: _lanzar, child: const Text('Reintentar')),
+                      ),
+                      const Hueco(8),
+                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Volver')),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          gradient: pro ? Marca.degradadoPro : Marca.degradado,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.all(18),
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                        ),
+                      ),
+                      const Hueco(24),
+                      Text('Nora está revisando tu nómina', style: t.textTheme.titleLarge),
+                      const Hueco(6),
+                      Text(
+                        pro ? 'La revisión completa tarda alrededor de un minuto.' : 'Tardará unos segundos.',
+                        style: t.textTheme.bodyMedium?.copyWith(color: tonos.suave),
+                      ),
+                      const Hueco(28),
+                      for (final (i, txt) in pasos.indexed)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: i < paso
+                                    ? const Icon(Icons.check_circle_rounded, color: Marca.ok)
+                                    : i == paso
                                     ? const Padding(
-                                        padding: EdgeInsets.all(3), child: CircularProgressIndicator(strokeWidth: 2.4))
+                                        padding: EdgeInsets.all(3),
+                                        child: CircularProgressIndicator(strokeWidth: 2.4),
+                                      )
                                     : Icon(Icons.circle_outlined, color: tonos.borde),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  txt,
+                                  style: t.textTheme.bodyLarge?.copyWith(
+                                    color: i <= paso ? null : tonos.suave,
+                                    fontWeight: i == paso ? FontWeight.w600 : null,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(txt,
-                                style: t.textTheme.bodyLarge?.copyWith(
-                                  color: i <= paso ? null : tonos.suave,
-                                  fontWeight: i == paso ? FontWeight.w600 : null,
-                                )),
-                          ),
-                        ]),
-                      ),
-                  ]),
+                        ),
+                    ],
+                  ),
           ),
         ),
       ),

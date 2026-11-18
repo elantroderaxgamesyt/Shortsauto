@@ -33,7 +33,7 @@ class Pagos extends ChangeNotifier {
   String get precio => _producto?.price ?? precioRevision;
 
   /// ¿Se puede pagar en este dispositivo? (Google Play sólo existe en Android.)
-  bool get sePuedePagar => pagosPrueba || (comprasGooglePlay && disponible);
+  bool get sePuedePagar => pagosPrueba || modoDemo || (comprasGooglePlay && disponible);
 
   Future<void> iniciar() async {
     final prefs = await SharedPreferences.getInstance();
@@ -59,7 +59,7 @@ class Pagos extends ChangeNotifier {
   Future<String?> pagar() async {
     final pendiente = pagoPendiente;
     if (pendiente != null) return pendiente;
-    if (pagosPrueba) {
+    if (pagosPrueba || modoDemo) {
       final t = 'prueba-${DateTime.now().microsecondsSinceEpoch}';
       await _guardar(t, null);
       return t;

@@ -88,7 +88,7 @@ Configuración en GitHub (*Settings → Secrets and variables → Actions*):
 
 | Tipo | Nombre | Qué es |
 |---|---|---|
-| Variable | `NOMINAS_API_URL` | URL pública del servidor, p. ej. `https://api.tudominio.es`. **Sin ella la app no sabe dónde está el servidor.** |
+| Variable | `NOMINAS_API_URL` | URL pública del servidor, p. ej. `https://api.tudominio.es`. **Sin ella la app se compila en modo demo** (sin servidor, informe de ejemplo y pagos simulados). |
 | Secreto | `ANDROID_KEYSTORE_BASE64` | Clave de subida a Play Store (`base64 -w0 upload.jks`) |
 | Secreto | `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Datos de esa clave |
 | Variable | `ADMOB_APP_ID` | Id de la app en AdMob (`ca-app-pub-…~…`) |

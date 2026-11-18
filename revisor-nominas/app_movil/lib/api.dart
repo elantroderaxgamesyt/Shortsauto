@@ -7,6 +7,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
+import 'demo.dart';
 
 class ErrorApi implements Exception {
   ErrorApi(this.mensaje, [this.codigo = 0]);
@@ -71,6 +72,17 @@ class Api {
     }
   }
 
+  final _demo = ServidorDemo();
+
+  /// Ejecuta una operación del modo demo convirtiendo sus errores en ErrorApi.
+  Future<T> _enDemo<T>(Future<T> Function() f, [int codigo = 402]) async {
+    try {
+      return await f();
+    } on StateError catch (e) {
+      throw ErrorApi(e.message, codigo);
+    }
+  }
+
   Map<String, String> get _cab => {'X-Dispositivo': usuario};
   Uri _u(String ruta) => Uri.parse('$apiUrl$ruta');
 
@@ -102,22 +114,34 @@ class Api {
   }
 
   Future<List<ResumenRevision>> revisiones() async {
+    if (modoDemo) return [for (final x in _demo.revisiones()) ResumenRevision(x)];
     final r = await _peticion(http.get(_u('/api/revisiones'), headers: _cab));
     return [for (final x in jsonDecode(utf8.decode(r.bodyBytes)) as List) ResumenRevision(x)];
   }
 
   /// Avisa de que se ha visto un anuncio con recompensa. Devuelve las preguntas disponibles.
-  Future<int> recompensa(String revision) async =>
-      (await _json(http.post(_u('/api/revisiones/$revision/recompensa'), headers: _cab)))['preguntas_disponibles'] ?? 0;
+  Future<int> recompensa(String revision) async => modoDemo
+      ? _enDemo(() async => _demo.recompensa(revision), 429)
+      : (await _json(http.post(_u('/api/revisiones/$revision/recompensa'), headers: _cab)))['preguntas_disponibles'] ?? 0;
 
-  Future<Revision> revision(String id) async => Revision(await _json(http.get(_u('/api/revisiones/$id'), headers: _cab)));
+  Future<Revision> revision(String id) async => modoDemo
+      ? Revision(_demo.revision(id) ?? (throw ErrorApi('Revisión no encontrada.', 404)))
+      : Revision(await _json(http.get(_u('/api/revisiones/$id'), headers: _cab)));
 
   /// Revisiones gratis que quedan hoy en este dispositivo.
-  Future<int> freeRestantesHoy() async =>
-      (await _json(http.get(_u('/api/limites'), headers: _cab)))['free_restantes_hoy'] ?? 0;
+  Future<int> freeRestantesHoy() async => modoDemo
+      ? _demo.freeRestantesHoy()
+      : (await _json(http.get(_u('/api/limites'), headers: _cab)))['free_restantes_hoy'] ?? 0;
 
   /// [compra]: token de Google Play con el que se ha pagado la revisión completa.
   Future<Revision> analizar(Uint8List datos, String nombre, String plan, {String? compra}) async {
+    if (modoDemo) return Revision(await _enDemo(() => _demo.analizar(plan, compra)));
+    // Comprobación rápida: si el servidor no responde, avisar en segundos y no al rato.
+    try {
+      await http.get(_u('/api/estado')).timeout(const Duration(seconds: 12));
+    } catch (_) {
+      throw ErrorApi('No se ha podido conectar con el servidor. Revisa tu conexión a internet.');
+    }
     final req = http.MultipartRequest('POST', _u('/api/analizar'))
       ..headers.addAll(_cab)
       ..fields['plan'] = plan
@@ -128,12 +152,20 @@ class Api {
 
   /// Devuelve la respuesta de Nora a trozos, según llega.
   Stream<String> chat(String revision, List<Map<String, String>> historial) async* {
+    if (modoDemo) {
+      try {
+        yield* _demo.chat(revision, historial.last['content'] ?? '');
+      } on StateError catch (e) {
+        throw ErrorApi(e.message, 402);
+      }
+      return;
+    }
     final req = http.Request('POST', _u('/api/chat'))
       ..headers.addAll({..._cab, 'Content-Type': 'application/json'})
       ..body = jsonEncode({'revision': revision, 'historial': historial});
     final http.StreamedResponse r;
     try {
-      r = await http.Client().send(req);
+      r = await http.Client().send(req).timeout(const Duration(seconds: 30));
     } catch (_) {
       throw ErrorApi('No se ha podido conectar con el servidor.');
     }
