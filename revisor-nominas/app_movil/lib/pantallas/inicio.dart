@@ -112,7 +112,7 @@ class _Portada extends StatelessWidget {
         // Wrap: en pantallas estrechas pasa a la línea siguiente en vez de cortarse.
         Center(
           child: Wrap(alignment: WrapAlignment.center, runSpacing: 4, children: [
-            for (final (i, txt) in const ['Gratis', 'Sin registro', 'Resultado al momento'].indexed)
+            for (final (i, txt) in const ['Gratis', 'Sin registro', 'Al momento'].indexed)
               Text('${i > 0 ? '  ·  ' : ''}$txt',
                   style: t.textTheme.bodySmall?.copyWith(color: Colors.white.withValues(alpha: .85))),
           ]),
