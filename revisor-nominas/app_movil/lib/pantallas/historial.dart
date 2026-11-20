@@ -32,7 +32,7 @@ class _PantallaHistorialState extends State<PantallaHistorial> {
   }
 
   void _alCambiarPestana() {
-    if (pestana.value == 1) _recargar();
+    if (pestana.value == 2) _recargar();
   }
 
   Future<void> _recargar() async {

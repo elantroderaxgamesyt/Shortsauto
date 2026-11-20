@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../config.dart';
 import '../tema.dart';
 import '../widgets.dart';
+import 'calculadoras.dart';
 import 'info.dart';
 import 'nueva_revision.dart';
 
@@ -52,6 +53,10 @@ class PantallaInicio extends StatelessWidget {
         ],
         const _Portada(),
         const Hueco(24),
+        Text('Calculadoras gratis', style: t.textTheme.titleMedium),
+        const Hueco(12),
+        const TarjetasCalculadoras(),
+        const Hueco(14),
         Text('Cómo funciona', style: t.textTheme.titleMedium),
         const Hueco(12),
         const _Paso(1, Icons.upload_file_rounded, 'Sube tu nómina', 'En PDF o con una foto desde el móvil.'),

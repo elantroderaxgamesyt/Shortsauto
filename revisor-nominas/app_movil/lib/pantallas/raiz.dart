@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../anuncios.dart';
 import '../estado.dart';
 import '../tema.dart';
+import 'calculadoras.dart';
 import 'historial.dart';
 import 'inicio.dart';
 
@@ -24,6 +25,7 @@ class _PantallaRaizState extends State<PantallaRaiz> {
 
   static const _destinos = [
     (Icons.home_outlined, Icons.home_rounded, 'Inicio'),
+    (Icons.calculate_outlined, Icons.calculate_rounded, 'Calculadoras'),
     (Icons.history_rounded, Icons.history_rounded, 'Mis revisiones'),
   ];
 
@@ -32,7 +34,7 @@ class _PantallaRaizState extends State<PantallaRaiz> {
         valueListenable: pestana,
         builder: (context, i, _) {
           final ancho = MediaQuery.sizeOf(context).width >= 840;
-          final cuerpo = IndexedStack(index: i, children: const [PantallaInicio(), PantallaHistorial()]);
+          final cuerpo = IndexedStack(index: i, children: const [PantallaInicio(), PantallaCalculadoras(), PantallaHistorial()]);
           if (!ancho) {
             return Scaffold(
               body: cuerpo,

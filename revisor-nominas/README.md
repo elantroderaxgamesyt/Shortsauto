@@ -33,6 +33,10 @@ paga cada vez que se hace (2,99 €, compra dentro de la app).
 | Preguntas a Nora | 1 por anuncio visto (máx. 5) | 3 sin anuncios + 1 por anuncio visto (máx. 5) |
 | Informe en PDF | — | ✅ |
 
+Calculadoras gratis (se calculan en el móvil, sin servidor ni IA, así que no cuestan nada):
+sueldo neto, finiquito e indemnización, y horas y pagas extra (`app_movil/lib/calculos/`, con tests).
+Los datos legales del año están en `app_movil/lib/calculos/datos.dart`: **revisarlos cada año**.
+
 Anuncios (sólo Android): al abrir la app (máx. 1 cada 4 h) y un banner en Inicio y Mis revisiones.
 Nunca dentro del informe.
 
