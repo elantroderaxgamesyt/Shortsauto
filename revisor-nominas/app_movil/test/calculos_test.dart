@@ -146,8 +146,18 @@ void main() {
       expect(leerFecha('15/03/2024'), DateTime(2024, 3, 15));
       expect(leerFecha('1-2-2020'), DateTime(2020, 2, 1));
       expect(leerFecha('31/02/2024'), isNull);
-      expect(leerFecha('15/03/24'), isNull);
+      expect(leerFecha('15/03/24'), DateTime(2024, 3, 15));
+      expect(leerFecha('15/03/85'), DateTime(1985, 3, 15));
       expect(fechaTexto(DateTime(2024, 3, 5)), '05/03/2024');
+    });
+
+    test('las barras se ponen solas', () {
+      String escribir(String t) => FormatoFecha().formatEditUpdate(TextEditingValue.empty, TextEditingValue(text: t)).text;
+      expect(escribir('01032022'), '01/03/2022');
+      expect(escribir('0103'), '01/03');
+      expect(escribir('010'), '01/0');
+      expect(escribir('01/03/2022'), '01/03/2022');
+      expect(escribir('010320221'), '01/03/2022');
     });
   });
 }

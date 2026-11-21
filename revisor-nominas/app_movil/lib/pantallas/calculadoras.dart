@@ -84,9 +84,11 @@ double? leerNumero(String texto) {
 
 /// Convierte "15/03/2024" (o con - o .) en fecha.
 DateTime? leerFecha(String texto) {
-  final m = RegExp(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$').firstMatch(texto.trim());
+  final m = RegExp(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2}|\d{4})$').firstMatch(texto.trim());
   if (m == null) return null;
-  final d = int.parse(m[1]!), mes = int.parse(m[2]!), a = int.parse(m[3]!);
+  final d = int.parse(m[1]!), mes = int.parse(m[2]!);
+  var a = int.parse(m[3]!);
+  if (m[3]!.length == 2) a += a <= (DateTime.now().year % 100) + 1 ? 2000 : 1900; // 15/03/24 → 2024
   final f = DateTime(a, mes, d);
   return (f.day == d && f.month == mes && a > 1950 && a < 2100) ? f : null;
 }
@@ -112,6 +114,22 @@ class CampoNumero extends StatelessWidget {
       );
 }
 
+/// Pone las barras solas mientras se escribe: 01032022 → 01/03/2022.
+class FormatoFecha extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue anterior, TextEditingValue nuevo) {
+    final digitos = nuevo.text.replaceAll(RegExp(r'\D'), '');
+    final d = digitos.length > 8 ? digitos.substring(0, 8) : digitos;
+    final b = StringBuffer();
+    for (var i = 0; i < d.length; i++) {
+      if (i == 2 || i == 4) b.write('/');
+      b.write(d[i]);
+    }
+    final texto = b.toString();
+    return TextEditingValue(text: texto, selection: TextSelection.collapsed(offset: texto.length));
+  }
+}
+
 class CampoFecha extends StatelessWidget {
   const CampoFecha(this.controlador, this.etiqueta, {super.key, this.onChanged});
   final TextEditingController controlador;
@@ -121,16 +139,17 @@ class CampoFecha extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final texto = controlador.text;
-    final mal = texto.isNotEmpty && leerFecha(texto) == null;
+    // Sólo se avisa cuando la fecha está completa (no mientras se escribe).
+    final mal = texto.length == 10 && leerFecha(texto) == null;
     return TextField(
       controller: controlador,
-      keyboardType: TextInputType.datetime,
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9/\-.]'))],
+      keyboardType: TextInputType.number,
+      inputFormatters: [FormatoFecha()],
       onChanged: (_) => onChanged?.call(),
       decoration: InputDecoration(
         labelText: etiqueta,
         hintText: 'dd/mm/aaaa',
-        errorText: mal ? 'Escribe la fecha como 15/03/2024' : null,
+        errorText: mal ? 'Fecha no válida' : null,
         suffixIcon: const Icon(Icons.event_outlined),
       ),
     );
@@ -281,6 +300,7 @@ class CalculadoraNeto extends StatefulWidget {
 
 class _CalculadoraNetoState extends State<CalculadoraNeto> {
   final bruto = TextEditingController();
+  bool porMes = false; // el usuario escribe el bruto mensual en vez del anual
   int pagas = 14;
   bool temporal = false;
   int hijos = 0;
@@ -288,13 +308,29 @@ class _CalculadoraNetoState extends State<CalculadoraNeto> {
 
   @override
   Widget build(BuildContext context) {
-    final b = leerNumero(bruto.text);
+    final escrito = leerNumero(bruto.text);
+    final b = escrito == null ? null : (porMes ? escrito * pagas : escrito);
+    final pareceMensual = !porMes && escrito != null && escrito > 0 && escrito < 6000;
     final r = (b != null && b > 0)
         ? calcularNeto(brutoAnual: b, pagas: pagas, temporal: temporal, hijos: hijos, hijosMenores3: menores3)
         : null;
     void cambia() => setState(() {});
     return _PantallaCalculadora(titulo: 'Sueldo neto', children: [
-      CampoNumero(bruto, 'Sueldo bruto anual', ayuda: 'Lo que pone en tu contrato, p. ej. 24.000', onChanged: cambia),
+      Opciones(
+        valor: porMes,
+        opciones: const [(false, 'Bruto al año'), (true, 'Bruto al mes')],
+        onChanged: (v) => setState(() => porMes = v),
+      ),
+      const Hueco(12),
+      CampoNumero(bruto, porMes ? 'Sueldo bruto de cada paga' : 'Sueldo bruto anual',
+          ayuda: porMes ? 'Lo que pone en "Total devengado", p. ej. 1.700' : 'Lo que pone en tu contrato, p. ej. 24.000',
+          onChanged: cambia),
+      if (pareceMensual)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text('¿Es tu sueldo de un mes? Elige "Bruto al mes" arriba.',
+              style: TextStyle(color: Estilo.de('aviso').texto(context), fontWeight: FontWeight.w600)),
+        ),
       const Hueco(16),
       Text('Número de pagas', style: Theme.of(context).textTheme.labelLarge),
       const Hueco(6),
