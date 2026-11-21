@@ -42,6 +42,7 @@ ResultadoFiniquito calcularFiniquito({
   required MotivoBaja motivo,
   int pagas = 14,
   double vacacionesDisfrutadas = 0,
+  double vacacionesAnteriores = 0, // días pendientes de años anteriores que no han caducado
   bool nominaMesCobrada = false,
 }) {
   final diario = brutoAnual / 365;
@@ -61,6 +62,13 @@ ResultadoFiniquito calcularFiniquito({
   if (pendientes > 0) {
     lineas.add(LineaFiniquito('Vacaciones no disfrutadas', pendientes * diario,
         '${pendientes.toStringAsFixed(1).replaceAll('.', ',')} días'));
+  }
+
+  // 2b) Vacaciones de años anteriores: normalmente caducan, salvo baja médica (hasta 18 meses),
+  //     maternidad/paternidad o si la empresa no dejó cogerlas (art. 38 ET y jurisprudencia del TJUE).
+  if (vacacionesAnteriores > 0) {
+    lineas.add(LineaFiniquito('Vacaciones de años anteriores', vacacionesAnteriores * diario,
+        '${vacacionesAnteriores.toStringAsFixed(1).replaceAll('.', ',')} días'));
   }
 
   // 3) Pagas extra (si no van prorrateadas): la de junio se genera de enero a junio y la de

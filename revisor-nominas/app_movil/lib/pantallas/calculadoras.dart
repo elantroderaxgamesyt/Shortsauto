@@ -468,6 +468,7 @@ class _CalculadoraFiniquitoState extends State<CalculadoraFiniquito> {
   final inicio = TextEditingController();
   final fin = TextEditingController(text: fechaTexto(DateTime.now()));
   final disfrutadas = TextEditingController(text: '0');
+  final anteriores = TextEditingController();
   MotivoBaja motivo = MotivoBaja.voluntaria;
   int pagas = 14;
   bool nominaCobrada = false;
@@ -488,6 +489,7 @@ class _CalculadoraFiniquitoState extends State<CalculadoraFiniquito> {
             motivo: motivo,
             pagas: pagas,
             vacacionesDisfrutadas: leerNumero(disfrutadas.text) ?? 0,
+            vacacionesAnteriores: leerNumero(anteriores.text) ?? 0,
             nominaMesCobrada: nominaCobrada,
           )
         : null;
@@ -510,6 +512,9 @@ class _CalculadoraFiniquitoState extends State<CalculadoraFiniquito> {
       ),
       const Hueco(12),
       CampoNumero(disfrutadas, 'Días de vacaciones ya disfrutados este año', sufijo: 'días', onChanged: cambia),
+      const Hueco(12),
+      CampoNumero(anteriores, 'Días pendientes de años anteriores (opcional)', sufijo: 'días', onChanged: cambia,
+          ayuda: 'Sólo si no caducaron: ver nota abajo'),
       const Hueco(12),
       Text('Pagas extra', style: t.textTheme.labelLarge),
       const Hueco(6),
@@ -555,6 +560,10 @@ class _CalculadoraFiniquitoState extends State<CalculadoraFiniquito> {
         const Hueco(12),
         const _Aviso('Cálculo orientativo en bruto (antes de IRPF y Seguridad Social). La indemnización por '
             'despido está exenta de IRPF hasta el límite legal. Tu convenio puede mejorar estas cantidades.'),
+        const Hueco(8),
+        const _Aviso('Vacaciones de años anteriores: normalmente caducan al acabar el año (o cuando diga tu '
+            'convenio). No caducan si no pudiste cogerlas por baja médica (hasta 18 meses después), por '
+            'maternidad o paternidad, o porque la empresa no te dejó; en esos casos puedes reclamarlas.'),
         const Hueco(16),
         const PromoRevision('¿Te han dado ya el finiquito? Súbelo y comprobamos si está bien.'),
       ],

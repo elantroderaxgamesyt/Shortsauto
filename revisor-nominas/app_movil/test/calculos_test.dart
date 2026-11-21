@@ -75,6 +75,21 @@ void main() {
       expect(r.finiquito, closeTo(739.7, 1));
     });
 
+    test('Vacaciones de años anteriores pendientes', () {
+      final r = calcularFiniquito(
+        brutoAnual: 36500,
+        inicio: DateTime(2020, 3, 1),
+        fin: DateTime(2026, 3, 31),
+        motivo: MotivoBaja.voluntaria,
+        pagas: 12,
+        nominaMesCobrada: true,
+        vacacionesAnteriores: 10,
+      );
+      final l = r.lineas.firstWhere((l) => l.concepto == 'Vacaciones de años anteriores');
+      expect(l.importe, closeTo(1000, 0.01)); // 10 días x 100 €
+      expect(r.finiquito, closeTo(1739.7, 1));
+    });
+
     test('Fin de contrato temporal: 12 días por año', () {
       final r = calcularFiniquito(
         brutoAnual: 36500,
