@@ -138,8 +138,18 @@ void main() {
       expect(leerNumero('1.234.567'), 1234567);
       expect(leerNumero('12,5'), 12.5);
       expect(leerNumero('7.5'), 7.5);
+      expect(sueldoAnual('1,650', porMes: true, pagas: 14), 23100);
+      expect(sueldoAnual('24.000', porMes: false, pagas: 14), 24000);
       expect(leerNumero('24 000 €'), 24000);
       expect(leerNumero(''), isNull);
+      // Teclados en inglés: la coma de miles
+      expect(leerNumero('1,650'), 1650);
+      expect(leerNumero('30,000'), 30000);
+      expect(leerNumero('1,234.56'), 1234.56);
+      expect(leerNumero('1.234,56'), 1234.56);
+      expect(leerNumero('1650,5'), 1650.5);
+      expect(leerNumero('1650.50'), 1650.5);
+      expect(leerNumero('0,500'), 0.5);
     });
 
     test('fechas', () {

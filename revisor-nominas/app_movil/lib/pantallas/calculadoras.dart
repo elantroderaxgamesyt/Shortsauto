@@ -70,16 +70,76 @@ class TarjetasCalculadoras extends StatelessWidget {
 
 // ======================================================================= piezas comunes
 
-/// Convierte "30.000", "30000,5" o "30 000" en número.
+/// Convierte lo que escribe el usuario en número, venga con formato español o inglés:
+/// "30.000", "30,000", "1.650", "1,650" (miles), "30000,5", "1.234,56", "1,234.56", "24 000 €".
 double? leerNumero(String texto) {
-  var s = texto.replaceAll(' ', '').replaceAll('€', '');
+  var s = texto.replaceAll(RegExp(r'[\s€]'), '');
   if (s.isEmpty) return null;
-  if (s.contains(',')) {
-    s = s.replaceAll('.', '').replaceAll(',', '.');
-  } else if (RegExp(r'\.\d{3}$').hasMatch(s)) {
-    s = s.replaceAll('.', ''); // 30.000 → miles
+  final ultimoPunto = s.lastIndexOf('.'), ultimaComa = s.lastIndexOf(',');
+  if (ultimoPunto >= 0 && ultimaComa >= 0) {
+    // Los dos: el último que aparece es el decimal.
+    final decimal = ultimoPunto > ultimaComa ? '.' : ',';
+    final miles = decimal == '.' ? ',' : '.';
+    s = s.replaceAll(miles, '').replaceAll(decimal, '.');
+  } else if (ultimoPunto >= 0 || ultimaComa >= 0) {
+    final sep = ultimoPunto >= 0 ? '.' : ',';
+    final partes = s.split(sep);
+    // Uno solo: si separa grupos de exactamente 3 cifras, son miles (1,650 = 1.650); si no, decimal.
+    final sonMiles = partes.length > 2 || (partes.length == 2 && partes[1].length == 3 && partes[0].isNotEmpty && partes[0] != '0');
+    s = sonMiles ? partes.join() : s.replaceAll(sep, '.');
   }
   return double.tryParse(s);
+}
+
+/// Sueldo anual a partir de lo escrito, que puede ser anual o de cada paga.
+double? sueldoAnual(String texto, {required bool porMes, required int pagas}) {
+  final v = leerNumero(texto);
+  return v == null ? null : (porMes ? v * pagas : v);
+}
+
+/// Selector "al año / al mes" + campo del sueldo + aviso si la cifra anual parece mensual.
+class CampoSueldo extends StatelessWidget {
+  const CampoSueldo({
+    super.key,
+    required this.controlador,
+    required this.porMes,
+    required this.onPorMes,
+    required this.onChanged,
+    this.pagas = 14,
+  });
+  final TextEditingController controlador;
+  final bool porMes;
+  final ValueChanged<bool> onPorMes;
+  final VoidCallback onChanged;
+  final int pagas;
+
+  @override
+  Widget build(BuildContext context) {
+    final escrito = leerNumero(controlador.text);
+    final pareceMensual = !porMes && escrito != null && escrito > 0 && escrito < 6000;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Opciones(
+        valor: porMes,
+        opciones: const [(false, 'Bruto al año'), (true, 'Bruto al mes')],
+        onChanged: onPorMes,
+      ),
+      const Hueco(12),
+      CampoNumero(
+        controlador,
+        porMes ? 'Sueldo bruto de cada paga' : 'Sueldo bruto anual',
+        ayuda: porMes
+            ? 'El "Total devengado" de una nómina'
+            : 'Lo que pone en tu contrato, p. ej. 24.000',
+        onChanged: onChanged,
+      ),
+      if (pareceMensual)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text('¿Es tu sueldo de un mes? Elige "Bruto al mes" arriba.',
+              style: TextStyle(color: Estilo.de('aviso').texto(context), fontWeight: FontWeight.w600)),
+        ),
+    ]);
+  }
 }
 
 /// Convierte "15/03/2024" (o con - o .) en fecha.
@@ -308,29 +368,14 @@ class _CalculadoraNetoState extends State<CalculadoraNeto> {
 
   @override
   Widget build(BuildContext context) {
-    final escrito = leerNumero(bruto.text);
-    final b = escrito == null ? null : (porMes ? escrito * pagas : escrito);
-    final pareceMensual = !porMes && escrito != null && escrito > 0 && escrito < 6000;
+    final b = sueldoAnual(bruto.text, porMes: porMes, pagas: pagas);
     final r = (b != null && b > 0)
         ? calcularNeto(brutoAnual: b, pagas: pagas, temporal: temporal, hijos: hijos, hijosMenores3: menores3)
         : null;
     void cambia() => setState(() {});
     return _PantallaCalculadora(titulo: 'Sueldo neto', children: [
-      Opciones(
-        valor: porMes,
-        opciones: const [(false, 'Bruto al año'), (true, 'Bruto al mes')],
-        onChanged: (v) => setState(() => porMes = v),
-      ),
-      const Hueco(12),
-      CampoNumero(bruto, porMes ? 'Sueldo bruto de cada paga' : 'Sueldo bruto anual',
-          ayuda: porMes ? 'Lo que pone en "Total devengado", p. ej. 1.700' : 'Lo que pone en tu contrato, p. ej. 24.000',
-          onChanged: cambia),
-      if (pareceMensual)
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text('¿Es tu sueldo de un mes? Elige "Bruto al mes" arriba.',
-              style: TextStyle(color: Estilo.de('aviso').texto(context), fontWeight: FontWeight.w600)),
-        ),
+      CampoSueldo(
+          controlador: bruto, porMes: porMes, pagas: pagas, onPorMes: (v) => setState(() => porMes = v), onChanged: cambia),
       const Hueco(16),
       Text('Número de pagas', style: Theme.of(context).textTheme.labelLarge),
       const Hueco(6),
@@ -419,6 +464,7 @@ class CalculadoraFiniquito extends StatefulWidget {
 
 class _CalculadoraFiniquitoState extends State<CalculadoraFiniquito> {
   final bruto = TextEditingController();
+  bool porMes = true; // casi todo el mundo sabe lo que cobra al mes
   final inicio = TextEditingController();
   final fin = TextEditingController(text: fechaTexto(DateTime.now()));
   final disfrutadas = TextEditingController(text: '0');
@@ -430,7 +476,7 @@ class _CalculadoraFiniquitoState extends State<CalculadoraFiniquito> {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     void cambia() => setState(() {});
-    final b = leerNumero(bruto.text);
+    final b = sueldoAnual(bruto.text, porMes: porMes, pagas: pagas);
     final fi = leerFecha(inicio.text);
     final ff = leerFecha(fin.text);
     final fechasMal = fi != null && ff != null && !ff.isAfter(fi);
@@ -447,7 +493,8 @@ class _CalculadoraFiniquitoState extends State<CalculadoraFiniquito> {
         : null;
 
     return _PantallaCalculadora(titulo: 'Finiquito', children: [
-      CampoNumero(bruto, 'Sueldo bruto anual', onChanged: cambia),
+      CampoSueldo(
+          controlador: bruto, porMes: porMes, pagas: pagas, onPorMes: (v) => setState(() => porMes = v), onChanged: cambia),
       const Hueco(12),
       Row(children: [
         Expanded(child: CampoFecha(inicio, 'Empezaste', onChanged: cambia)),
@@ -527,6 +574,7 @@ class CalculadoraExtras extends StatefulWidget {
 class _CalculadoraExtrasState extends State<CalculadoraExtras> {
   int modo = 0; // 0 horas extra, 1 paga extra
   final bruto = TextEditingController();
+  bool porMes = true;
   final jornada = TextEditingController(text: '40');
   final horas = TextEditingController();
   final precioConvenio = TextEditingController();
@@ -540,7 +588,7 @@ class _CalculadoraExtrasState extends State<CalculadoraExtras> {
     return _PantallaCalculadora(titulo: 'Horas y pagas extra', children: [
       Opciones(valor: modo, opciones: const [(0, 'Horas extra'), (1, 'Paga extra')], onChanged: (v) => setState(() => modo = v)),
       const Hueco(16),
-      CampoNumero(bruto, 'Sueldo bruto anual', onChanged: cambia),
+      CampoSueldo(controlador: bruto, porMes: porMes, onPorMes: (v) => setState(() => porMes = v), onChanged: cambia),
       const Hueco(12),
       if (modo == 0) ..._horasExtra(cambia) else ..._pagaExtra(cambia),
     ]);
@@ -548,7 +596,7 @@ class _CalculadoraExtrasState extends State<CalculadoraExtras> {
 
   List<Widget> _horasExtra(VoidCallback cambia) {
     final t = Theme.of(context);
-    final b = leerNumero(bruto.text);
+    final b = sueldoAnual(bruto.text, porMes: porMes, pagas: 14);
     final j = leerNumero(jornada.text);
     final h = leerNumero(horas.text);
     final pc = leerNumero(precioConvenio.text);
@@ -598,7 +646,7 @@ class _CalculadoraExtrasState extends State<CalculadoraExtras> {
   }
 
   List<Widget> _pagaExtra(VoidCallback cambia) {
-    final b = leerNumero(bruto.text);
+    final b = sueldoAnual(bruto.text, porMes: porMes, pagas: 14);
     final fi = leerFecha(inicio.text);
     final anio = DateTime.now().year;
     final r = (b != null && b > 0 && fi != null)
